@@ -1,250 +1,24 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import math
-from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional
-import copy
+from visualisation import SheetVisualizer
+from proper_job_dataclasses import Carcass, Cabinet, Drawer, Doors, FaceFrame
 import json
-import os
+from quote_calculator import QuoteCalculator
 
+RUNNERS_PATH = r"resources/runners.json"
+MATERIALS_PATH = r"resources/sheet_material.json"
+LABOUR_PATH = r"resources/labour_costs.json"
 
-# Define data structures
-@dataclass
-class Unit:
-    name: str
-    unit_type: str  # Type of kitchen unit (e.g., "Cabinet", "Drawer", etc.)
-    height: float
-    width: float
-    depth: float
-    material_thickness: float
-    quantity: int = 1
+def read_resources():
+    def read_resource(path: str):
+        with open(path, "r") as f:
+            return json.load(f)
 
-    def get_parts(self) -> List[Tuple[float, float, str]]:
-        """Returns a list of parts needed for this unit as (length, width, part_name)"""
-        parts = []
-        # Front and back
-        parts.append((self.height, self.width, f"{self.name} - Front/Back"))
-        parts.append((self.height, self.width, f"{self.name} - Front/Back"))
+    runners_dict = read_resource(RUNNERS_PATH)
+    materials_dict = read_resource(MATERIALS_PATH)[0]
+    labour_costs_dict = read_resource(LABOUR_PATH)[0]
 
-        # Sides
-        parts.append((self.height, self.depth - self.material_thickness, f"{self.name} - Side"))
-        parts.append((self.height, self.depth - self.material_thickness, f"{self.name} - Side"))
-
-        # Top and bottom
-        parts.append((self.width - 2 * self.material_thickness, self.depth - self.material_thickness,
-                      f"{self.name} - Top/Bottom"))
-        parts.append((self.width - 2 * self.material_thickness, self.depth - self.material_thickness,
-                      f"{self.name} - Top/Bottom"))
-
-        return parts
-
-    def get_total_area(self) -> float:
-        """Calculate the total area of material needed for this unit"""
-        total_area = 0
-        for part in self.get_parts():
-            total_area += part[0] * part[1] * self.quantity
-        return total_area
-
-
-class SheetOptimizer:
-    def __init__(self, sheet_width: float, sheet_height: float):
-        self.sheet_width = sheet_width
-        self.sheet_height = sheet_height
-
-    def optimize(self, parts: List[Tuple[float, float, str]]) -> List[Dict]:
-        """
-        An improved bin packing algorithm to fit parts onto sheets
-        Returns a list of sheets with their utilized parts
-        """
-        # Sort parts by area (decreasing)
-        parts.sort(key=lambda p: p[0] * p[1], reverse=True)
-
-        sheets = []
-
-        for part_length, part_width, part_name in parts:
-            # Ensure part fits on a sheet (rotate if necessary)
-            if max(part_length, part_width) > max(self.sheet_width, self.sheet_height) or \
-                    min(part_length, part_width) > min(self.sheet_width, self.sheet_height):
-                continue  # Skip parts that can't fit on a sheet
-
-            # Try to find a sheet with available space
-            placed = False
-            for sheet in sheets:
-                if self._place_part_on_sheet(sheet, part_length, part_width, part_name):
-                    placed = True
-                    break
-
-            # If no existing sheet has space, create a new one
-            if not placed:
-                new_sheet = {
-                    'spaces': [(0, 0, self.sheet_width, self.sheet_height)],  # x, y, width, height
-                    'cuts': [],
-                    'utilization': 0
-                }
-                self._place_part_on_sheet(new_sheet, part_length, part_width, part_name)
-                sheets.append(new_sheet)
-
-        # Calculate utilization for each sheet
-        for sheet in sheets:
-            used_area = sum(p[0] * p[1] for p, _, _ in sheet['cuts'])
-            sheet['utilization'] = (used_area / (self.sheet_width * self.sheet_height)) * 100
-
-        return sheets
-
-    def _place_part_on_sheet(self, sheet: Dict, part_length: float, part_width: float, part_name: str) -> bool:
-        """Attempt to place a part on the given sheet using a more efficient algorithm"""
-        # Try each available space
-        for i, (space_x, space_y, space_width, space_height) in enumerate(sheet['spaces']):
-            # Try original orientation
-            if part_length <= space_width and part_width <= space_height:
-                # Part fits, place it here
-                sheet['cuts'].append(((part_length, part_width, part_name), space_x, space_y))
-
-                # Remove this space
-                del sheet['spaces'][i]
-
-                # Add new spaces (split the remaining area)
-                # Space to the right of the part
-                if space_width - part_length > 0:
-                    sheet['spaces'].append((
-                        space_x + part_length,
-                        space_y,
-                        space_width - part_length,
-                        space_height
-                    ))
-
-                # Space below the part
-                if space_height - part_width > 0:
-                    sheet['spaces'].append((
-                        space_x,
-                        space_y + part_width,
-                        part_length,
-                        space_height - part_width
-                    ))
-
-                return True
-
-            # Try rotated orientation
-            elif part_width <= space_width and part_length <= space_height:
-                # Rotated part fits, place it here
-                sheet['cuts'].append(((part_width, part_length, part_name), space_x, space_y))
-
-                # Remove this space
-                del sheet['spaces'][i]
-
-                # Add new spaces (split the remaining area)
-                # Space to the right of the part
-                if space_width - part_width > 0:
-                    sheet['spaces'].append((
-                        space_x + part_width,
-                        space_y,
-                        space_width - part_width,
-                        space_height
-                    ))
-
-                # Space below the part
-                if space_height - part_length > 0:
-                    sheet['spaces'].append((
-                        space_x,
-                        space_y + part_length,
-                        part_width,
-                        space_height - part_length
-                    ))
-
-                return True
-
-        return False
-
-
-class QuoteCalculator:
-    def __init__(self):
-        self.units: List[Unit] = []
-        self.sheet_price: float = 0
-        self.sheet_width: float = 2440  # Standard sheet size in mm
-        self.sheet_height: float = 1220  # Standard sheet size in mm
-        self.labor_rate: float = 0
-        self.markup_percentage: float = 0
-
-    def add_unit(self, unit: Unit) -> None:
-        self.units.append(unit)
-
-    def remove_unit(self, index: int) -> None:
-        if 0 <= index < len(self.units):
-            self.units.pop(index)
-
-    def duplicate_unit(self, index: int) -> None:
-        if 0 <= index < len(self.units):
-            unit = copy.deepcopy(self.units[index])
-            unit.name = f"{unit.name} (copy)"
-            self.units.append(unit)
-
-    def calculate_quote(self) -> Dict:
-        # Collect all parts from all units
-        all_parts = []
-        for unit in self.units:
-            parts = unit.get_parts()
-            # Multiply parts by quantity
-            for _ in range(unit.quantity):
-                all_parts.extend(parts)
-
-        # Optimize sheet usage
-        optimizer = SheetOptimizer(self.sheet_width, self.sheet_height)
-        sheets = optimizer.optimize(all_parts)
-
-        # Calculate total material cost
-        material_cost = len(sheets) * self.sheet_price
-
-        # Calculate labor cost
-        # Simple estimate: 2 hours per unit
-        labor_hours = sum(2 * unit.quantity for unit in self.units)
-        labor_cost = labor_hours * self.labor_rate
-
-        # Calculate total cost
-        subtotal = material_cost + labor_cost
-        markup = subtotal * (self.markup_percentage / 100)
-        total = subtotal + markup
-
-        return {
-            'units': len(self.units),
-            'sheets_required': len(sheets),
-            'sheets': sheets,
-            'material_cost': material_cost,
-            'labor_hours': labor_hours,
-            'labor_cost': labor_cost,
-            'subtotal': subtotal,
-            'markup': markup,
-            'total': total
-        }
-
-    def save_to_file(self, filename: str) -> None:
-        """Save the current project to a JSON file"""
-        data = {
-            'units': [vars(c) for c in self.units],
-            'sheet_price': self.sheet_price,
-            'sheet_width': self.sheet_width,
-            'sheet_height': self.sheet_height,
-            'labor_rate': self.labor_rate,
-            'markup_percentage': self.markup_percentage
-        }
-
-        with open(filename, 'w') as f:
-            json.dump(data, f, indent=2)
-
-    def load_from_file(self, filename: str) -> None:
-        """Load project from a JSON file"""
-        with open(filename, 'r') as f:
-            data = json.load(f)
-
-        self.units = []
-        for unit_data in data['units']:
-            self.units.append(Unit(**unit_data))
-
-        self.sheet_price = data['sheet_price']
-        self.sheet_width = data['sheet_width']
-        self.sheet_height = data['sheet_height']
-        self.labor_rate = data['labor_rate']
-        self.markup_percentage = data['markup_percentage']
-
+    return runners_dict, materials_dict, labour_costs_dict
 
 class DarkTheme:
     """Theme constants for the dark UI"""
@@ -266,15 +40,15 @@ class KitchenQuoteApp:
         self.root.title("Proper Job")
         self.root.geometry("1200x700")
         self.root.configure(bg=DarkTheme.BG_COLOR)
-
-        self.calculator = QuoteCalculator()
+        self.runners_dict, self.materials_dict, self.labour_cost_dict = read_resources()
+        self.calculator = QuoteCalculator(self.labour_cost_dict, self.materials_dict)
         self.setup_styles()
         self.create_ui()
 
         # Track the current unit being edited
         self.current_edit_index = None
         # Define available unit types
-        self.unit_types = ["Cabinet", "Drawer", "Shelving", "Pantry", "Island", "Other"]
+        self.unit_types = ["Cabinet"]
 
     def setup_styles(self):
         """Configure ttk styles for the dark theme"""
@@ -312,6 +86,15 @@ class KitchenQuoteApp:
                   fieldbackground=[('readonly', DarkTheme.ENTRY_BG)],
                   foreground=[('readonly', DarkTheme.TEXT_COLOR)])
 
+    def get_carcass_materials(self):
+        return [material["Material"] for material in self.materials_dict["Materials"] if material["Carcass"]]
+
+    def get_door_materials(self):
+        return [material["Material"] for material in self.materials_dict["Materials"] if material["Door"]]
+
+    def get_face_frame_materials(self):
+        return [material["Material"] for material in self.materials_dict["Materials"] if material["Face Frame"]]
+
     def create_ui(self):
         """Create the main application UI"""
         # Main frame
@@ -328,7 +111,7 @@ class KitchenQuoteApp:
         ttk.Entry(settings_frame, textvariable=self.sheet_price_var, width=10).grid(row=0, column=1, padx=5, pady=5)
 
         ttk.Label(settings_frame, text="Labor Rate (£/hr):").grid(row=0, column=2, padx=5, pady=5, sticky=tk.W)
-        self.labor_rate_var = tk.DoubleVar(value=25.0)
+        self.labor_rate_var = tk.DoubleVar(value=40.0)
         ttk.Entry(settings_frame, textvariable=self.labor_rate_var, width=10).grid(row=0, column=3, padx=5, pady=5)
 
         ttk.Label(settings_frame, text="Markup (%):").grid(row=0, column=4, padx=5, pady=5, sticky=tk.W)
@@ -362,19 +145,17 @@ class KitchenQuoteApp:
         list_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
         # Unit table
-        columns = ('name', 'type', 'dimensions', 'material', 'quantity')
+        columns = ('name', 'dimensions', 'material', 'quantity')
         self.unit_table = ttk.Treeview(list_frame, columns=columns, show='headings')
 
         # Set column headings
         self.unit_table.heading('name', text='Unit')
-        self.unit_table.heading('type', text='Type')
         self.unit_table.heading('dimensions', text='Dimensions (H×W×D mm)')
         self.unit_table.heading('material', text='Material Thickness (mm)')
         self.unit_table.heading('quantity', text='Quantity')
 
         # Set column widths
         self.unit_table.column('name', width=150)
-        self.unit_table.column('type', width=100)
         self.unit_table.column('dimensions', width=200)
         self.unit_table.column('material', width=150)
         self.unit_table.column('quantity', width=100)
@@ -413,10 +194,38 @@ class KitchenQuoteApp:
         # Initialize the calculator with default values
         self.update_calculator_settings()
 
+    def visualise_sheets(self, optimiser, parts, sheets):
+        # Create visualizations
+        print("\n" + "=" * 50)
+        print("CREATING VISUALIZATIONS")
+        print("=" * 50)
+
+        # Create visualizer
+        visualizer = SheetVisualizer(optimiser.sheet_width, optimiser.sheet_height)
+
+        # Show overview of all sheets
+        print("\nShowing overview of all sheets...")
+        visualizer.visualize_all_sheets(sheets, parts)
+
+        # Show detailed view of each sheet
+        print("\nShowing detailed view of each sheet...")
+        for sheet_idx, sheet in enumerate(sheets):
+            visualizer.visualize_sheet(sheet, sheet_idx + 1, parts)
+
+        # Create technical cutting diagram
+        print("\nCreating technical cutting diagram...")
+        visualizer.create_cutting_diagram(sheets, parts)
+
+        print("\nVisualization complete!")
+
     def update_calculator_settings(self):
         """Update the calculator with the current UI settings"""
         try:
-            self.calculator.sheet_price = self.sheet_price_var.get()
+            for material in self.materials_dict["Materials"]:
+                for thickness in material["Cost"]:
+                    self.calculator.set_sheet_price(material["Material"],
+                                                    thickness["Thickness"],
+                                                    (thickness["Sheet Cost (exc. VAT)"] * (1+self.materials_dict["VAT"])))
             self.calculator.labor_rate = self.labor_rate_var.get()
             self.calculator.markup_percentage = self.markup_var.get()
             self.calculator.sheet_width = self.sheet_width_var.get()
@@ -428,15 +237,7 @@ class KitchenQuoteApp:
     def add_unit(self):
         """Show the unit detail panel for adding a new unit"""
         self.current_edit_index = None
-        self.show_detail_panel(Unit(
-            name="New Unit",
-            unit_type="",  # Empty type initially
-            height=720,
-            width=600,
-            depth=570,
-            material_thickness=18,
-            quantity=1
-        ))
+        self.show_detail_panel(self.create_default_cabinet())
 
     def edit_unit(self):
         """Edit the selected unit"""
@@ -474,118 +275,527 @@ class KitchenQuoteApp:
         self.calculator.duplicate_unit(index)
         self.refresh_unit_table()
 
-    def show_detail_panel(self, unit: Unit):
+    def create_runners_list(self, model):
+        for runner_model in self.runners_dict:
+            if runner_model["Name"] == model:
+                return runner_model["Runners"]
+
+    def show_detail_panel(self, cabinet: Cabinet):
         """Show the detail panel with the given unit data"""
         # Clear existing panel if it exists
         for widget in self.detail_panel.winfo_children():
             widget.destroy()
 
+        carcass = cabinet.carcass
+
         # Configure and show the panel
         self.detail_panel.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
 
-        # Add fields for unit details
-        ttk.Label(self.detail_panel, text="Unit Details", font=("Arial", 12)).pack(pady=10)
+        # Create a canvas with scrollbar for the detail panel
+        self.detail_canvas = tk.Canvas(self.detail_panel, highlightthickness=0)
+        self.detail_scrollbar = ttk.Scrollbar(self.detail_panel, orient="vertical", command=self.detail_canvas.yview)
+        self.detail_scrollable_frame = ttk.Frame(self.detail_canvas)
+
+        # Configure scrolling
+        self.detail_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.detail_canvas.configure(scrollregion=self.detail_canvas.bbox("all"))
+        )
+
+        # Create window in canvas
+        self.detail_canvas.create_window((0, 0), window=self.detail_scrollable_frame, anchor="nw")
+        self.detail_canvas.configure(yscrollcommand=self.detail_scrollbar.set)
+
+        # Pack canvas and scrollbar
+        self.detail_canvas.pack(side="left", fill="both", expand=True)
+        self.detail_scrollbar.pack(side="right", fill="y")
+
+        # Bind mousewheel to canvas
+        def _on_mousewheel(event):
+            self.detail_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        self.detail_canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows
+        self.detail_canvas.bind("<Button-4>", lambda e: self.detail_canvas.yview_scroll(-1, "units"))  # Linux
+        self.detail_canvas.bind("<Button-5>", lambda e: self.detail_canvas.yview_scroll(1, "units"))  # Linux
+
+        # Main title
+        ttk.Label(self.detail_scrollable_frame, text="Cabinet Details", font=("Arial", 14, "bold")).pack(pady=10)
 
         # Unit name
-        name_frame = ttk.Frame(self.detail_panel, style='TFrame')
+        name_frame = ttk.Frame(self.detail_scrollable_frame, style='TFrame')
         name_frame.pack(fill=tk.X, padx=10, pady=5)
-        ttk.Label(name_frame, text="Name:").pack(side=tk.LEFT, padx=5)
-        self.unit_name_var = tk.StringVar(value=unit.name)
+        ttk.Label(name_frame, text="Cabinet Name:").pack(side=tk.LEFT, padx=5)
+        self.unit_name_var = tk.StringVar(value=carcass.name)
         ttk.Entry(name_frame, textvariable=self.unit_name_var, width=25).pack(side=tk.LEFT, padx=5, fill=tk.X,
                                                                               expand=True)
 
-        # Unit type selection
-        type_frame = ttk.Frame(self.detail_panel, style='TFrame')
-        type_frame.pack(fill=tk.X, padx=10, pady=5)
-        ttk.Label(type_frame, text="Unit Type:").pack(side=tk.LEFT, padx=5)
-        self.unit_type_var = tk.StringVar(value=unit.unit_type)
-        self.unit_type_combo = ttk.Combobox(type_frame, textvariable=self.unit_type_var,
-                                            values=self.unit_types, width=20, state="readonly")
-        self.unit_type_combo.pack(side=tk.LEFT, padx=5)
-        self.unit_type_combo.bind("<<ComboboxSelected>>", self.on_type_selected)
+        # ==================== SECTION 1: CARCASS ====================
+        carcass_section = ttk.LabelFrame(self.detail_scrollable_frame, text="Carcass", padding=10)
+        carcass_section.pack(fill=tk.X, padx=10, pady=10)
 
-        # Container for dimension inputs (initially hidden)
-        self.dimension_container = ttk.Frame(self.detail_panel, style='TFrame')
-        self.dimension_container.pack(fill=tk.X, padx=10, pady=5)
-
-        # Dimensions
-        dim_frame = ttk.Frame(self.dimension_container, style='TFrame')
-        dim_frame.pack(fill=tk.X, padx=0, pady=5)
+        # Dimensions row
+        dim_frame = ttk.Frame(carcass_section)
+        dim_frame.pack(fill=tk.X, pady=5)
         ttk.Label(dim_frame, text="Dimensions (mm):").pack(side=tk.LEFT, padx=5)
 
-        dim_inputs = ttk.Frame(dim_frame, style='TFrame')
-        dim_inputs.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
         # Height
-        height_frame = ttk.Frame(dim_inputs, style='TFrame')
-        height_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(height_frame, text="Height:").pack(side=tk.LEFT, padx=5)
-        self.unit_height_var = tk.DoubleVar(value=unit.height)
-        ttk.Entry(height_frame, textvariable=self.unit_height_var, width=10).pack(side=tk.LEFT, padx=5)
+        ttk.Label(dim_frame, text="H:").pack(side=tk.LEFT, padx=(20, 2))
+        self.unit_height_var = tk.DoubleVar(value=carcass.height)
+        ttk.Entry(dim_frame, textvariable=self.unit_height_var, width=8).pack(side=tk.LEFT, padx=2)
 
         # Width
-        width_frame = ttk.Frame(dim_inputs, style='TFrame')
-        width_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(width_frame, text="Width:").pack(side=tk.LEFT, padx=5)
-        self.unit_width_var = tk.DoubleVar(value=unit.width)
-        ttk.Entry(width_frame, textvariable=self.unit_width_var, width=10).pack(side=tk.LEFT, padx=5)
+        ttk.Label(dim_frame, text="W:").pack(side=tk.LEFT, padx=(10, 2))
+        self.unit_width_var = tk.DoubleVar(value=carcass.width)
+        ttk.Entry(dim_frame, textvariable=self.unit_width_var, width=8).pack(side=tk.LEFT, padx=2)
 
         # Depth
-        depth_frame = ttk.Frame(dim_inputs, style='TFrame')
-        depth_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(depth_frame, text="Depth:").pack(side=tk.LEFT, padx=5)
-        self.unit_depth_var = tk.DoubleVar(value=unit.depth)
-        ttk.Entry(depth_frame, textvariable=self.unit_depth_var, width=10).pack(side=tk.LEFT, padx=5)
+        ttk.Label(dim_frame, text="D:").pack(side=tk.LEFT, padx=(10, 2))
+        self.unit_depth_var = tk.DoubleVar(value=carcass.depth)
+        ttk.Entry(dim_frame, textvariable=self.unit_depth_var, width=8).pack(side=tk.LEFT, padx=2)
 
-        # Material thickness
-        thickness_frame = ttk.Frame(self.dimension_container, style='TFrame')
-        thickness_frame.pack(fill=tk.X, padx=0, pady=5)
+        # Material row
+        material_frame = ttk.Frame(carcass_section)
+        material_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(material_frame, text="Material:").pack(side=tk.LEFT, padx=5)
+        self.material_var = tk.StringVar(value=carcass.material)
+        ttk.Combobox(material_frame, textvariable=self.material_var, width=15,
+                     values=self.get_carcass_materials()).pack(side=tk.LEFT, padx=10)
+
+        # Material thickness row
+        thickness_frame = ttk.Frame(carcass_section)
+        thickness_frame.pack(fill=tk.X, pady=5)
         ttk.Label(thickness_frame, text="Material Thickness (mm):").pack(side=tk.LEFT, padx=5)
-        self.unit_thickness_var = tk.DoubleVar(value=unit.material_thickness)
-        ttk.Entry(thickness_frame, textvariable=self.unit_thickness_var, width=10).pack(side=tk.LEFT, padx=5)
+        self.unit_thickness_var = tk.DoubleVar(value=carcass.material_thickness)
+        ttk.Combobox(thickness_frame, textvariable=self.unit_thickness_var, width=10,
+                     values=["18", "19"]).pack(side=tk.LEFT, padx=10)
 
-        # Quantity
-        quantity_frame = ttk.Frame(self.dimension_container, style='TFrame')
-        quantity_frame.pack(fill=tk.X, padx=0, pady=5)
+        # Shelves row
+        shelves_frame = ttk.Frame(carcass_section)
+        shelves_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(shelves_frame, text="Number of Shelves:").pack(side=tk.LEFT, padx=5)
+        self.shelves_var = tk.IntVar(value=carcass.shelves)
+        ttk.Entry(shelves_frame, textvariable=self.shelves_var, width=10).pack(side=tk.LEFT, padx=10)
+
+        # ==================== SECTION 2: DRAWERS ====================
+        drawers_section = ttk.LabelFrame(self.detail_scrollable_frame, text="Drawers", padding=10)
+        drawers_section.pack(fill=tk.X, padx=10, pady=10)
+
+        # Number of Drawers with Add/Remove buttons
+        number_of_drawers_frame = ttk.Frame(drawers_section)
+        number_of_drawers_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(number_of_drawers_frame, text="Number of Drawers:").pack(side=tk.LEFT, padx=5)
+
+        self.number_of_drawers_var = tk.IntVar(value=len(cabinet.drawers))
+        drawer_count_label = ttk.Label(number_of_drawers_frame, textvariable=self.number_of_drawers_var)
+        drawer_count_label.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(number_of_drawers_frame, text="Add Drawer",
+                   command=self.add_drawer_panel).pack(side=tk.LEFT, padx=10)
+        ttk.Button(number_of_drawers_frame, text="Remove Drawer",
+                   command=self.remove_drawer_panel).pack(side=tk.LEFT, padx=5)
+
+        # Container for all drawer panels
+        self.drawer_panels_container = ttk.Frame(drawers_section)
+        self.drawer_panels_container.pack(fill=tk.X, pady=10)
+
+        # Initialize drawer panels data
+        self.drawer_panels = []
+
+        # Create panels for existing drawers only if unit has drawers
+        for drawer in cabinet.drawers:
+            self.create_drawer_panel(drawer)
+
+        # ==================== SECTION 3: DOORS ====================
+        doors_section = ttk.LabelFrame(self.detail_scrollable_frame, text="Doors", padding=10)
+        doors_section.pack(fill=tk.X, padx=10, pady=10)
+
+        doors = cabinet.doors
+        # Door material row
+        door_material_frame = ttk.Frame(doors_section)
+        door_material_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(door_material_frame, text="Door Material:").pack(side=tk.LEFT, padx=5)
+        self.door_material_var = tk.StringVar(value=getattr(doors, 'material', ''))
+        ttk.Combobox(door_material_frame, textvariable=self.door_material_var, width=15,
+                     values=self.get_door_materials()).pack(side=tk.LEFT, padx=10)
+
+        # Door type row
+        door_type_frame = ttk.Frame(doors_section)
+        door_type_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(door_type_frame, text="Door Type:").pack(side=tk.LEFT, padx=5)
+        self.door_type_var = tk.StringVar(value=getattr(doors, 'type', ''))
+        ttk.Combobox(door_type_frame, textvariable=self.door_type_var, width=15,
+                     values=["Shaker", "Flat"]).pack(side=tk.LEFT, padx=10)
+
+        # Door thickness row
+        door_thickness_frame = ttk.Frame(doors_section)
+        door_thickness_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(door_thickness_frame, text="Door Thickness (mm):").pack(side=tk.LEFT, padx=5)
+        self.door_thickness_var = tk.IntVar(value=getattr(doors, 'door_thickness', 25))
+        ttk.Combobox(door_thickness_frame, textvariable=self.door_thickness_var, width=10,
+                     values=[18, 25], state="readonly").pack(side=tk.LEFT, padx=10)
+
+        # Door position row
+        door_position_frame = ttk.Frame(doors_section)
+        door_position_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(door_position_frame, text="Door Position:").pack(side=tk.LEFT, padx=5)
+        self.door_position_var = tk.StringVar(value=getattr(doors, 'position', ''))
+        ttk.Combobox(door_position_frame, textvariable=self.door_position_var, width=10,
+                     values=['Overlay', 'Inset'], state="readonly").pack(side=tk.LEFT, padx=10)
+
+        # Door margin row
+        door_margin_frame = ttk.Frame(doors_section)
+        door_margin_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(door_margin_frame, text="Door Margin (mm):").pack(side=tk.LEFT, padx=5)
+        self.door_margin_var = tk.IntVar(value=getattr(doors, 'margin', 25))
+        ttk.Combobox(door_margin_frame, textvariable=self.door_margin_var, width=10,
+                     values=[4, 3, 2], state="readonly").pack(side=tk.LEFT, padx=10)
+        # Door options row
+        door_options_frame = ttk.Frame(doors_section)
+        door_options_frame.pack(fill=tk.X, pady=5)
+
+        self.door_moulding_var = tk.BooleanVar(value=getattr(doors, 'moulding', False))
+        ttk.Checkbutton(door_options_frame, text="Moulding",
+                        variable=self.door_moulding_var).pack(side=tk.LEFT, padx=10)
+
+        self.door_cut_handle_var = tk.BooleanVar(value=getattr(doors, 'cut_handle', False))
+        ttk.Checkbutton(door_options_frame, text="Cut Handle",
+                        variable=self.door_cut_handle_var).pack(side=tk.LEFT, padx=10)
+
+        # Number of doors row
+        doors_count_frame = ttk.Frame(doors_section)
+        doors_count_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(doors_count_frame, text="Number of Doors:").pack(side=tk.LEFT, padx=5)
+        self.number_of_doors_var = tk.IntVar(value=getattr(doors, 'quantity', 0))
+        ttk.Combobox(doors_count_frame, textvariable=self.number_of_doors_var, width=10,
+                     values=[0, 1, 2], state="readonly").pack(side=tk.LEFT, padx=10)
+
+        # ==================== SECTION 4: FACE FRAME ====================
+        face_frame_section = ttk.LabelFrame(self.detail_scrollable_frame, text="Face Frame", padding=10)
+        face_frame_section.pack(fill=tk.X, padx=10, pady=10)
+
+        # Frame type row
+        frame_type_frame = ttk.Frame(face_frame_section)
+        frame_type_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(frame_type_frame, text="Frame Type:").pack(side=tk.LEFT, padx=5)
+        self.face_frame_type_var = tk.StringVar(value=getattr(cabinet, 'face_frame_type', ''))
+        ttk.Combobox(frame_type_frame, textvariable=self.face_frame_type_var, width=15,
+                     values=self.get_face_frame_materials()).pack(side=tk.LEFT, padx=10)
+
+        # Face frame moulding row
+        face_frame_options_frame = ttk.Frame(face_frame_section)
+        face_frame_options_frame.pack(fill=tk.X, pady=5)
+        self.face_frame_moulding_var = tk.BooleanVar(value=getattr(cabinet, 'face_frame_moulding', False))
+        ttk.Checkbutton(face_frame_options_frame, text="Face Frame Moulding",
+                        variable=self.face_frame_moulding_var).pack(side=tk.LEFT, padx=10)
+
+        # ==================== SECTION 5: QUANTITY ====================
+        quantity_section = ttk.LabelFrame(self.detail_scrollable_frame, text="Quantity", padding=10)
+        quantity_section.pack(fill=tk.X, padx=10, pady=10)
+
+        quantity_frame = ttk.Frame(quantity_section)
+        quantity_frame.pack(fill=tk.X, pady=5)
         ttk.Label(quantity_frame, text="Quantity:").pack(side=tk.LEFT, padx=5)
-        self.unit_quantity_var = tk.IntVar(value=unit.quantity)
-        ttk.Entry(quantity_frame, textvariable=self.unit_quantity_var, width=10).pack(side=tk.LEFT, padx=5)
+        self.unit_quantity_var = tk.IntVar(value=cabinet.quantity)
+        ttk.Entry(quantity_frame, textvariable=self.unit_quantity_var, width=10).pack(side=tk.LEFT, padx=10)
 
-        # Buttons
-        button_frame = ttk.Frame(self.detail_panel, style='TFrame')
-        button_frame.pack(fill=tk.X, padx=10, pady=10)
+        # ==================== BUTTONS ====================
+        button_frame = ttk.Frame(self.detail_scrollable_frame)
+        button_frame.pack(fill=tk.X, padx=10, pady=20)
         ttk.Button(button_frame, text="Save", command=self.save_unit).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.hide_detail_panel).pack(side=tk.LEFT, padx=5)
 
-        # Hide the dimension inputs initially if no type is selected
-        if not unit.unit_type:
-            self.dimension_container.pack_forget()
+        # Update canvas scroll region after all widgets are added
+        self.detail_scrollable_frame.update_idletasks()
+        self.detail_canvas.configure(scrollregion=self.detail_canvas.bbox("all"))
 
-    def on_type_selected(self, event):
-        """Show dimension inputs when a unit type is selected"""
-        if self.unit_type_var.get():
-            self.dimension_container.pack(fill=tk.X, padx=10, pady=5)
+    def create_drawer_panel(self, drawer=None):
+        """Create a new drawer panel"""
+        panel_index = len(self.drawer_panels)
+
+        # Main frame for this drawer
+        drawer_frame = ttk.LabelFrame(self.drawer_panels_container, text=f"Drawer {panel_index + 1}",
+                                      style='TLabelframe', padding=5)
+        drawer_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        # Panel data dictionary
+        panel_data = {
+            'frame': drawer_frame,
+            'index': panel_index,
+            'height_var': tk.IntVar(value=drawer.height if drawer else ""),
+            'thickness_var': tk.IntVar(value=drawer.thickness if drawer else 18),
+            'material_var': tk.StringVar(value=drawer.material if drawer else ""),
+            'runner_model_var': tk.StringVar(value=drawer.runner_model if drawer else ""),
+            'runner_size_var': tk.IntVar(value=drawer.runner_size if drawer else ""),
+            'runner_capacity_var': tk.IntVar(value=drawer.runner_capacity if drawer else ""),
+            'runner_size_combo': None,
+            'runner_capacity_combo': None
+        }
+
+        # Row 1: Height and Thickness
+        row1_frame = ttk.Frame(drawer_frame)
+        row1_frame.pack(fill=tk.X, pady=2)
+
+        ttk.Label(row1_frame, text="Height:").pack(side=tk.LEFT, padx=5)
+        ttk.Entry(row1_frame, textvariable=panel_data['height_var'], width=8).pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(row1_frame, text="Thickness:").pack(side=tk.LEFT, padx=(15, 5))
+        ttk.Entry(row1_frame, textvariable=panel_data['thickness_var'], width=8).pack(side=tk.LEFT, padx=5)
+
+        # Row 2: Material
+        row2_frame = ttk.Frame(drawer_frame)
+        row2_frame.pack(fill=tk.X, pady=2)
+
+        ttk.Label(row2_frame, text="Material:").pack(side=tk.LEFT, padx=5)
+        ttk.Combobox(row2_frame, textvariable=panel_data['material_var'], width=12,
+                     values=self.get_carcass_materials()).pack(side=tk.LEFT, padx=5)
+
+        # Row 3: Runner Model
+        row3_frame = ttk.Frame(drawer_frame)
+        row3_frame.pack(fill=tk.X, pady=2)
+
+        ttk.Label(row3_frame, text="Runner Model:").pack(side=tk.LEFT, padx=5)
+        runner_model_combo = ttk.Combobox(row3_frame, textvariable=panel_data['runner_model_var'],
+                                          width=12, values=[runner["Name"] for runner in self.runners_dict])
+        runner_model_combo.pack(side=tk.LEFT, padx=5)
+
+        # Bind the selection event
+        runner_model_combo.bind("<<ComboboxSelected>>",
+                                lambda event: self.on_runner_model_selected(event, panel_data))
+
+        # Row 4: Runner Size and Capacity (initially disabled)
+        row4_frame = ttk.Frame(drawer_frame)
+        row4_frame.pack(fill=tk.X, pady=2)
+
+        ttk.Label(row4_frame, text="Size (mm):").pack(side=tk.LEFT, padx=5)
+        panel_data['runner_size_combo'] = ttk.Combobox(row4_frame, textvariable=panel_data['runner_size_var'],
+                                                       width=8, state="disabled")
+        panel_data['runner_size_combo'].pack(side=tk.LEFT, padx=5)
+        panel_data['runner_size_combo'].bind("<<ComboboxSelected>>",
+                                             lambda event: self.on_runner_size_selected(event, panel_data))
+
+        ttk.Label(row4_frame, text="Capacity (kg):").pack(side=tk.LEFT, padx=(10, 5))
+        panel_data['runner_capacity_combo'] = ttk.Combobox(row4_frame, textvariable=panel_data['runner_capacity_var'],
+                                                           width=8, state="disabled")
+        panel_data['runner_capacity_combo'].pack(side=tk.LEFT, padx=5)
+
+        # Store panel data
+        self.drawer_panels.append(panel_data)
+
+        # Update drawer count
+        self.number_of_drawers_var.set(len(self.drawer_panels))
+
+    def on_runner_model_selected(self, event, panel_data):
+        """Handle runner model selection"""
+        selected_model = panel_data['runner_model_var'].get()
+
+        if selected_model:
+            # Get available sizes for this model
+            runners = self.create_runners_list(selected_model)
+            sizes = list(set([runner['Length'] for runner in runners]))
+            sizes.sort()
+
+            # Enable and populate size combobox
+            panel_data['runner_size_combo'].config(state="normal")
+            panel_data['runner_size_combo']['values'] = sizes
+            panel_data['runner_size_var'].set("")
+            panel_data['runner_capacity_var'].set("")
+            panel_data['runner_capacity_combo'].config(state="disabled")
+            panel_data['runner_capacity_combo']['values'] = []
         else:
-            self.dimension_container.pack_forget()
+            # Disable size and capacity comboboxes
+            panel_data['runner_size_combo'].config(state="disabled")
+            panel_data['runner_capacity_combo'].config(state="disabled")
+            panel_data['runner_size_var'].set("")
+            panel_data['runner_capacity_var'].set("")
+
+    def on_runner_size_selected(self, event, panel_data):
+        """Handle runner size selection"""
+        selected_model = panel_data['runner_model_var'].get()
+        selected_size = panel_data['runner_size_var'].get()
+
+        if selected_model and selected_size:
+            # Extract numeric size
+            # size_value = int(selected_size.replace('mm', ''))
+
+            # Get available capacities for this model and size
+
+            runners = self.create_runners_list(selected_model)
+            capacities = list(set([runner['Capacity'] for runner in runners
+                                   if runner['Length'] == selected_size]))
+
+            capacities.sort()
+
+            # Enable and populate capacity combobox
+            panel_data['runner_capacity_combo'].config(state="normal")
+            panel_data['runner_capacity_combo']['values'] = capacities
+
+            # Reset capacity selection
+            panel_data['runner_capacity_var'].set("")
+
+    def add_drawer_panel(self):
+        """Add a new drawer panel"""
+        self.create_drawer_panel()
+        # Update scroll region after adding panel
+        self.update_scroll_region()
+
+    def remove_drawer_panel(self):
+        """Remove the last drawer panel"""
+        if len(self.drawer_panels) > 1:
+            # Remove the last panel
+            last_panel = self.drawer_panels.pop()
+            last_panel['frame'].destroy()
+
+            # Update drawer count
+            self.number_of_drawers_var.set(len(self.drawer_panels))
+
+            # Renumber remaining panels
+            for i, panel in enumerate(self.drawer_panels):
+                panel['frame'].config(text=f"Drawer {i + 1}")
+                panel['index'] = i
+
+            # Update scroll region after removing panel
+            self.update_scroll_region()
+
+    def update_scroll_region(self):
+        """Update the canvas scroll region"""
+        self.detail_scrollable_frame.update_idletasks()
+        self.detail_canvas.configure(scrollregion=self.detail_canvas.bbox("all"))
+
+    def create_runners_list(self, brand_name):
+        """Create runners list for a specific brand"""
+        for runner_brand in self.runners_dict:
+            if runner_brand["Name"] == brand_name:
+                return runner_brand["Runners"]
+        return []
+
+    def get_cabinet_data(self):
+        """Get data from all sections of the cabinet form"""
+        cabinet_data = {
+            'name': self.unit_name_var.get(),
+            'carcass': {
+                'height': self.unit_height_var.get(),
+                'width': self.unit_width_var.get(),
+                'depth': self.unit_depth_var.get(),
+                'material_thickness': self.unit_thickness_var.get(),
+                'material': self.material_var.get(),
+                'shelves': self.shelves_var.get()
+            },
+            'drawers': self.get_drawer_data(),
+            'doors': {
+                'door_material': self.door_material_var.get(),
+                'door_type': self.door_type_var.get(),
+                'door_thickness': self.door_thickness_var.get(),
+                'moulding': self.door_moulding_var.get(),
+                'cut_handle': self.door_cut_handle_var.get(),
+                'number_of_doors': self.number_of_doors_var.get(),
+                'position': self.door_position_var.get(),
+                'margin': self.door_margin_var.get()
+            },
+            'face_frame': {
+                'frame_type': self.face_frame_type_var.get(),
+                'moulding': self.face_frame_moulding_var.get()
+            },
+            'quantity': self.unit_quantity_var.get()
+        }
+        return cabinet_data
+
+    def get_drawer_data(self):
+        """Get data from all drawer panels"""
+        drawers_data = []
+        for panel in self.drawer_panels:
+            drawer_data = {
+                'height': panel['height_var'].get(),
+                'thickness': panel['thickness_var'].get(),
+                'material': panel['material_var'].get(),
+                'runner_model': panel['runner_model_var'].get(),
+                'runner_size': panel['runner_size_var'].get(),
+                'runner_capacity': panel['runner_capacity_var'].get()
+            }
+            drawers_data.append(drawer_data)
+        return drawers_data
+
+    def get_runner_price(self, runner_model_name, runner_size, runner_capacity):
+        runner_model = self.create_runners_list(runner_model_name)
+        for runner in runner_model:
+            if runner["Length"] == runner_size and runner["Capacity"] == runner_capacity:
+                return runner["Price"]
+
+        raise ValueError("Specified runner information not found")
+
+    def create_default_cabinet(self):
+        carcass = Carcass("",
+                          None,
+                          None,
+                          None,
+                          "Laminate",
+                          17,
+                          0)
+
+        drawers = []
+
+        doors = Doors(carcass,
+                      "",
+                      "",
+                      "",
+                      False,
+                      False,
+                      0,
+                      "",
+                      "")
+
+        face_frame = FaceFrame(carcass,
+                               "",
+                               False)
+
+        return Cabinet(carcass, drawers, 1, doors, face_frame)
+
+    def parse_cabinet_data(self, cabinet_data):
+        carcass_data = cabinet_data['carcass']
+        carcass = Carcass(cabinet_data['name'],
+                          carcass_data['height'],
+                          carcass_data['width'],
+                          carcass_data['depth'],
+                          carcass_data['material'],
+                          carcass_data['material_thickness'],
+                          carcass_data['shelves'])
+
+        drawers = []
+        for drawer_data in cabinet_data['drawers']:
+            drawers.append(Drawer(drawer_data['height'],
+                            drawer_data['thickness'],
+                            drawer_data['material'],
+                            drawer_data['runner_model'],
+                            drawer_data['runner_size'],
+                            drawer_data['runner_capacity'],
+                            carcass,
+                            self.get_runner_price(drawer_data['runner_model'],
+                                                  drawer_data['runner_size'],
+                                                  drawer_data['runner_capacity'])))
+
+        door_data = cabinet_data['doors']
+
+        doors = Doors(carcass,
+                      door_data['door_material'],
+                      door_data['door_type'],
+                      door_data['door_thickness'],
+                      door_data['moulding'],
+                      door_data['cut_handle'],
+                      door_data['number_of_doors'],
+                      door_data['position'],
+                      door_data['margin'])
+
+        face_frame_data = cabinet_data['face_frame']
+        face_frame = FaceFrame(carcass,
+                               face_frame_data['frame_type'],
+                               face_frame_data['moulding'])
+
+        return Cabinet(carcass, drawers, cabinet_data['quantity'], doors, face_frame)
 
     def save_unit(self):
         """Save the unit from the detail panel"""
         try:
-            # Check if a unit type is selected
-            if not self.unit_type_var.get():
-                messagebox.showinfo("Type Required", "Please select a unit type.")
-                return
-
             # Create a unit from the UI fields
-            unit = Unit(
-                name=self.unit_name_var.get(),
-                unit_type=self.unit_type_var.get(),
-                height=self.unit_height_var.get(),
-                width=self.unit_width_var.get(),
-                depth=self.unit_depth_var.get(),
-                material_thickness=self.unit_thickness_var.get(),
-                quantity=self.unit_quantity_var.get()
-            )
+            unit = self.parse_cabinet_data(self.get_cabinet_data())
 
             # Add or update the unit in the calculator
             if self.current_edit_index is not None:
@@ -613,12 +823,12 @@ class KitchenQuoteApp:
 
         # Add units to the table
         for unit in self.calculator.units:
-            dimensions = f"{unit.height} × {unit.width} × {unit.depth}"
+            carcass = unit.carcass
+            dimensions = f"{carcass.height} × {carcass.width} × {carcass.depth}"
             self.unit_table.insert('', tk.END, values=(
-                unit.name,
-                unit.unit_type,
+                carcass.name,
                 dimensions,
-                unit.material_thickness,
+                carcass.material_thickness,
                 unit.quantity
             ))
 
@@ -653,7 +863,10 @@ class KitchenQuoteApp:
         ttk.Label(summary, text=str(quote['units'])).grid(row=1, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Sheets Required:").grid(row=2, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=str(quote['sheets_required'])).grid(row=2, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=str(quote['total_sheets_required'])).grid(row=2, column=1, sticky="w", padx=5)
+
+        ttk.Label(summary, text="Sheets Breakdown:").grid(row=2, column=0, sticky="w", padx=5)
+        ttk.Label(summary, text=str(quote['sheets_breakdown'])).grid(row=2, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Material Cost:").grid(row=3, column=0, sticky="w", padx=5)
         ttk.Label(summary, text=f"£{quote['material_cost']:.2f}").grid(row=3, column=1, sticky="w", padx=5)
@@ -675,6 +888,9 @@ class KitchenQuoteApp:
         ttk.Label(summary, text=f"£{quote['total']:.2f}", font=("Arial", 10, "bold")).grid(row=8, column=1, sticky="w",
                                                                                            padx=5, pady=5)
 
+        ttk.Label(summary, text="Materials Used:").grid(row=6, column=0, sticky="w", padx=5)
+        ttk.Label(summary, text=f"{quote['materials_used']}").grid(row=6, column=1, sticky="w", padx=5)
+
     def show_cut_list(self):
         """Display the cut list in a new window"""
         self.update_calculator_settings()
@@ -685,6 +901,8 @@ class KitchenQuoteApp:
 
         # Calculate the quote to get the cut list
         quote = self.calculator.calculate_quote()
+
+        self.visualise_sheets(self.calculator.optimizer, self.calculator.get_all_parts(), self.calculator.sheets)
 
         # Create a new window
         cut_list_window = tk.Toplevel(self.root)

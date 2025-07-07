@@ -1,0 +1,118 @@
+[
+  {
+    "VAT": 0.2,
+    "Veneer Lacquer Cost": 7.5,
+    "Veneer Edging Cost": 4,
+    "Veneer Screw Cost": 3,
+    "Materials": [
+      {
+        "Material": "Oak Veneer",
+        "Veneer": true,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": false,
+        "Face Frame": false,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      },
+      {
+        "Material": "Walnut Veneer",
+        "Veneer": true,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": false,
+        "Face Frame": false,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      },
+      {
+        "Material": "Birch Veneer",
+        "Veneer": true,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": false,
+        "Face Frame": false,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      },
+      {
+        "Material": "Melamine",
+        "Veneer": false,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": true,
+        "Face Frame": true,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      },
+      {
+        "Material": "MDF",
+        "Veneer": false,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": true,
+        "Face Frame": true,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      },
+      {
+        "Material": "Laminate",
+        "Veneer": false,
+        "Hardwood": false,
+        "Carcass": true,
+        "Door": true,
+        "Face Frame": false,
+        "Cost": [
+          {
+          "Thickness": 17,
+          "Sheet Cost (exc. VAT)": 57.95
+        },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 57.95
+          }
+        ]
+      }
+    ]
+  }
+]
