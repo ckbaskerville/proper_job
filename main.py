@@ -4,21 +4,14 @@ from visualisation import SheetVisualizer
 from proper_job_dataclasses import Carcass, Cabinet, Drawer, Doors, FaceFrame
 import json
 from quote_calculator import QuoteCalculator
+import tkinter.simpledialog
 
 RUNNERS_PATH = r"resources/runners.json"
 MATERIALS_PATH = r"resources/sheet_material.json"
 LABOUR_PATH = r"resources/labour_costs.json"
 
-def read_resources():
-    def read_resource(path: str):
-        with open(path, "r") as f:
-            return json.load(f)
 
-    runners_dict = read_resource(RUNNERS_PATH)
-    materials_dict = read_resource(MATERIALS_PATH)[0]
-    labour_costs_dict = read_resource(LABOUR_PATH)[0]
 
-    return runners_dict, materials_dict, labour_costs_dict
 
 class DarkTheme:
     """Theme constants for the dark UI"""
@@ -40,8 +33,21 @@ class KitchenQuoteApp:
         self.root.title("Proper Job")
         self.root.geometry("1200x700")
         self.root.configure(bg=DarkTheme.BG_COLOR)
-        self.runners_dict, self.materials_dict, self.labour_cost_dict = read_resources()
+
+        # Store paths for settings dialog
+        self.RUNNERS_PATH = RUNNERS_PATH
+        self.MATERIALS_PATH = MATERIALS_PATH
+        self.LABOUR_PATH = LABOUR_PATH
+
+        # Make DarkTheme accessible to settings dialog
+        self.DarkTheme = DarkTheme
+
+        # Make QuoteCalculator class accessible
+        self.QuoteCalculator = QuoteCalculator
+
+        self.runners_dict, self.materials_dict, self.labour_cost_dict = self.read_resources()
         self.calculator = QuoteCalculator(self.labour_cost_dict, self.materials_dict)
+        self.quote = None
         self.setup_styles()
         self.create_ui()
 
@@ -49,6 +55,22 @@ class KitchenQuoteApp:
         self.current_edit_index = None
         # Define available unit types
         self.unit_types = ["Cabinet"]
+
+    def read_resources(self):
+        def read_resource(path: str):
+            with open(path, "r") as f:
+                return json.load(f)
+
+        # Store paths as class attributes
+        self.RUNNERS_PATH = RUNNERS_PATH
+        self.MATERIALS_PATH = MATERIALS_PATH
+        self.LABOUR_PATH = LABOUR_PATH
+
+        runners_dict = read_resource(RUNNERS_PATH)
+        materials_dict = read_resource(MATERIALS_PATH)[0]
+        labour_costs_dict = read_resource(LABOUR_PATH)[0]
+
+        return runners_dict, materials_dict, labour_costs_dict
 
     def setup_styles(self):
         """Configure ttk styles for the dark theme"""
@@ -95,6 +117,364 @@ class KitchenQuoteApp:
     def get_face_frame_materials(self):
         return [material["Material"] for material in self.materials_dict["Materials"] if material["Face Frame"]]
 
+    # You'll also need to add this method if you don't have it:
+    def export_customer_quote(self):
+        """Export customer quote to file"""
+        if not self.check_quote_exists():
+            return
+
+        filename = tk.filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("PDF files", "*.pdf"), ("All files", "*.*")],
+            title="Export Customer Quote As"
+        )
+
+        if not filename:
+            return
+
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("KITCHEN CABINET QUOTE\n")
+                f.write("=" * 30 + "\n\n")
+
+                f.write(f"Number of Units: {self.quote['units']}\n")
+                f.write(f"Total Sheets Required: {self.quote['total_sheets_required']}\n")
+                f.write(f"Material Cost: £{self.quote['material_cost']:.2f}\n")
+                f.write(f"Labor Hours: {self.quote['labor_hours']:.1f}\n")
+                f.write(f"Labor Cost: £{self.quote['labor_cost']:.2f}\n")
+                f.write(f"Subtotal: £{self.quote['subtotal']:.2f}\n")
+                f.write(f"Markup ({self.calculator.markup_percentage}%): £{self.quote['markup']:.2f}\n")
+                f.write(f"\nTOTAL: £{self.quote['total']:.2f}\n")
+
+            messagebox.showinfo("Quote Exported", f"Customer quote exported to {filename}")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export quote: {str(e)}")
+
+    def open_settings(self):
+        """Open the settings dialog"""
+        from settings_dialog import SettingsDialog  # Import here to avoid circular imports
+        SettingsDialog(self.root, self)
+
+    def show_unit_breakdown(self):
+        """Display detailed unit breakdown in a new window"""
+
+        if not self.check_quote_exists():
+            return
+
+        # Get the breakdown data
+        breakdown_data = self.calculator.calculate_unit_breakdown()
+
+        if not breakdown_data:
+            messagebox.showinfo("No Data", "No units to show breakdown for.")
+            return
+
+        # Create a new window
+        breakdown_window = tk.Toplevel(self.root)
+        breakdown_window.title("Unit Breakdown")
+        breakdown_window.geometry("1200x800")
+        breakdown_window.configure(bg=DarkTheme.BG_COLOR)
+
+        # Main frame
+        main_frame = ttk.Frame(breakdown_window, style='TFrame')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Title
+        ttk.Label(main_frame, text="Unit Breakdown", font=("Arial", 16, "bold")).pack(pady=(0, 10))
+
+        # Create canvas and scrollbar for the main content
+        canvas = tk.Canvas(main_frame, bg=DarkTheme.BG_COLOR, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, style='TFrame')
+
+        # Configure scrolling
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bind mousewheel to canvas
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux
+
+        # Create unit sections
+        project_material_total = 0
+        project_labor_total = 0
+        project_labor_hours = 0
+
+        for unit_data in breakdown_data:
+            # Unit header frame
+            unit_frame = ttk.LabelFrame(scrollable_frame,
+                                        text=f"{unit_data['unit_name']} (Qty: {unit_data['quantity']})",
+                                        padding=10, style='TLabelframe')
+            unit_frame.pack(fill=tk.X, padx=5, pady=10)
+
+            # Create table for components
+            table_frame = ttk.Frame(unit_frame, style='TFrame')
+            table_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Table headers
+            headers = ['Component', 'Material', 'Thickness', 'Dimensions', 'Parts', 'Area (mm²)',
+                       'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost', 'Notes']
+
+            # Create table using Treeview
+            columns = tuple(range(len(headers)))
+            tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=len(unit_data['components']) + 1)
+
+            # Configure column headings and widths
+            column_widths = [100, 80, 70, 120, 50, 80, 80, 70, 80, 80, 150]
+            for i, (header, width) in enumerate(zip(headers, column_widths)):
+                tree.heading(i, text=header)
+                tree.column(i, width=width, minwidth=50)
+
+            # Add component data
+            for component in unit_data['components']:
+                values = [
+                    component['component'],
+                    component['material'],
+                    f"{component['thickness']}mm",
+                    component['dimensions'],
+                    component['parts_count'],
+                    f"{component['total_area']:.0f}",
+                    f"£{component['material_cost']:.2f}",
+                    f"{component['labor_hours']:.1f}",
+                    f"£{component['labor_cost']:.2f}",
+                    f"£{component['total_cost']:.2f}",
+                    component['notes']
+                ]
+                tree.insert('', tk.END, values=values)
+
+            # Pack the tree
+            tree.pack(fill=tk.BOTH, expand=True, pady=5)
+
+            # Unit summary frame
+            summary_frame = ttk.Frame(unit_frame, style='TFrame')
+            summary_frame.pack(fill=tk.X, pady=(10, 0))
+
+            # Unit totals
+            totals = unit_data['unit_totals']
+
+            # Create summary labels in a grid
+            summary_labels = [
+                ("Unit Material Cost:", f"£{totals['material_cost']:.2f}"),
+                ("Unit Labor Hours:", f"{totals['labor_hours']:.1f} hrs"),
+                ("Unit Labor Cost:", f"£{totals['labor_cost']:.2f}"),
+                ("Unit Subtotal:", f"£{totals['subtotal']:.2f}"),
+                ("Total (with quantity):", f"£{totals['total_with_quantity']:.2f}")
+            ]
+
+            for i, (label, value) in enumerate(summary_labels):
+                row = i // 3
+                col = (i % 3) * 2
+
+                ttk.Label(summary_frame, text=label, font=("Arial", 9, "bold")).grid(
+                    row=row, column=col, sticky="w", padx=5, pady=2)
+                ttk.Label(summary_frame, text=value).grid(
+                    row=row, column=col + 1, sticky="w", padx=5, pady=2)
+
+            # Add to project totals
+            project_material_total += totals['total_with_quantity']
+            project_labor_total += totals['labor_cost'] * unit_data['quantity']
+            project_labor_hours += totals['labor_hours'] * unit_data['quantity']
+
+        # Project summary at the bottom
+        project_frame = ttk.LabelFrame(scrollable_frame, text="Project Summary",
+                                       padding=10, style='TLabelframe')
+        project_frame.pack(fill=tk.X, padx=5, pady=20)
+
+        # Calculate markup and final totals
+        project_subtotal = project_material_total + project_labor_total
+        markup_amount = project_subtotal * (self.calculator.markup_percentage / 100)
+        project_total = project_subtotal + markup_amount
+
+        project_summary_labels = [
+            ("Total Material Cost:", f"£{project_material_total:.2f}"),
+            ("Total Labor Hours:", f"{project_labor_hours:.1f} hrs"),
+            ("Total Labor Cost:", f"£{project_labor_total:.2f}"),
+            ("Subtotal:", f"£{project_subtotal:.2f}"),
+            ("Markup ({:.0f}%):".format(self.calculator.markup_percentage), f"£{markup_amount:.2f}"),
+            ("PROJECT TOTAL:", f"£{project_total:.2f}")
+        ]
+
+        for i, (label, value) in enumerate(project_summary_labels):
+            font_style = ("Arial", 12, "bold") if "TOTAL" in label else ("Arial", 10)
+            color = DarkTheme.ACCENT_COLOR if "TOTAL" in label else DarkTheme.TEXT_COLOR
+
+            row = i // 2
+            col = (i % 2) * 2
+
+            label_widget = ttk.Label(project_frame, text=label, font=font_style)
+            value_widget = ttk.Label(project_frame, text=value, font=font_style)
+
+            label_widget.grid(row=row, column=col, sticky="w", padx=10, pady=5)
+            value_widget.grid(row=row, column=col + 1, sticky="w", padx=10, pady=5)
+
+        # Buttons frame
+        button_frame = ttk.Frame(main_frame, style='TFrame')
+        button_frame.pack(fill=tk.X, pady=10)
+
+        ttk.Button(button_frame, text="Export to CSV",
+                   command=lambda: self.export_breakdown_to_csv(breakdown_data)).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Print Breakdown",
+                   command=lambda: self.print_breakdown(breakdown_data)).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Close",
+                   command=breakdown_window.destroy).pack(side=tk.RIGHT, padx=5)
+
+        # Update scroll region
+        scrollable_frame.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    def export_breakdown_to_csv(self, breakdown_data):
+        """Export the unit breakdown to a CSV file"""
+        import csv
+        from tkinter import filedialog
+
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Export Breakdown As"
+        )
+
+        if not filename:
+            return
+
+        try:
+            with open(filename, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+
+                # Write header
+                writer.writerow(['Unit Name', 'Quantity', 'Component', 'Material', 'Thickness (mm)',
+                                 'Dimensions', 'Parts Count', 'Total Area (mm²)', 'Material Cost (£)',
+                                 'Labor Hours', 'Labor Cost (£)', 'Total Cost (£)', 'Notes'])
+
+                # Write data
+                for unit_data in breakdown_data:
+                    unit_name = unit_data['unit_name']
+                    quantity = unit_data['quantity']
+
+                    for component in unit_data['components']:
+                        row = [
+                            unit_name,
+                            quantity,
+                            component['component'],
+                            component['material'],
+                            component['thickness'],
+                            component['dimensions'],
+                            component['parts_count'],
+                            f"{component['total_area']:.0f}",
+                            f"{component['material_cost']:.2f}",
+                            f"{component['labor_hours']:.1f}",
+                            f"{component['labor_cost']:.2f}",
+                            f"{component['total_cost']:.2f}",
+                            component['notes']
+                        ]
+                        writer.writerow(row)
+
+                    # Add unit summary row
+                    totals = unit_data['unit_totals']
+                    writer.writerow([
+                        f"{unit_name} - UNIT TOTAL",
+                        quantity,
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        f"{totals['material_cost']:.2f}",
+                        f"{totals['labor_hours']:.1f}",
+                        f"{totals['labor_cost']:.2f}",
+                        f"{totals['total_with_quantity']:.2f}",
+                        ""
+                    ])
+
+                    # Add empty row for separation
+                    writer.writerow([])
+
+            messagebox.showinfo("Export Successful", f"Breakdown exported to {filename}")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export breakdown: {str(e)}")
+
+    def print_breakdown(self, breakdown_data):
+        """Print the breakdown (save to text file)"""
+        from tkinter import filedialog
+
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+            title="Save Breakdown Report As"
+        )
+
+        if not filename:
+            return
+
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("KITCHEN CABINET UNIT BREAKDOWN\n")
+                f.write("=" * 50 + "\n\n")
+
+                project_material_total = 0
+                project_labor_total = 0
+                project_labor_hours = 0
+
+                for unit_data in breakdown_data:
+                    f.write(f"Unit: {unit_data['unit_name']} (Quantity: {unit_data['quantity']})\n")
+                    f.write("-" * 50 + "\n")
+
+                    for component in unit_data['components']:
+                        f.write(f"  {component['component']}:\n")
+                        f.write(f"    Material: {component['material']} ({component['thickness']}mm)\n")
+                        f.write(f"    Dimensions: {component['dimensions']}\n")
+                        f.write(f"    Parts: {component['parts_count']}, Area: {component['total_area']:.0f} mm²\n")
+                        f.write(f"    Material Cost: £{component['material_cost']:.2f}\n")
+                        f.write(f"    Labor: {component['labor_hours']:.1f} hrs (£{component['labor_cost']:.2f})\n")
+                        f.write(f"    Total: £{component['total_cost']:.2f}\n")
+                        if component['notes']:
+                            f.write(f"    Notes: {component['notes']}\n")
+                        f.write("\n")
+
+                    totals = unit_data['unit_totals']
+                    f.write(f"  Unit Totals:\n")
+                    f.write(f"    Material: £{totals['material_cost']:.2f}\n")
+                    f.write(f"    Labor: {totals['labor_hours']:.1f} hrs (£{totals['labor_cost']:.2f})\n")
+                    f.write(f"    Unit Subtotal: £{totals['subtotal']:.2f}\n")
+                    f.write(f"    Total with Quantity: £{totals['total_with_quantity']:.2f}\n")
+                    f.write("\n" + "=" * 50 + "\n\n")
+
+                    project_material_total += totals['total_with_quantity']
+                    project_labor_total += totals['labor_cost'] * unit_data['quantity']
+                    project_labor_hours += totals['labor_hours'] * unit_data['quantity']
+
+                # Project summary
+                project_subtotal = project_material_total + project_labor_total
+                markup_amount = project_subtotal * (self.calculator.markup_percentage / 100)
+                project_total = project_subtotal + markup_amount
+
+                f.write("PROJECT SUMMARY\n")
+                f.write("=" * 30 + "\n")
+                f.write(f"Total Material Cost: £{project_material_total:.2f}\n")
+                f.write(f"Total Labor: {project_labor_hours:.1f} hrs (£{project_labor_total:.2f})\n")
+                f.write(f"Subtotal: £{project_subtotal:.2f}\n")
+                f.write(f"Markup ({self.calculator.markup_percentage:.0f}%): £{markup_amount:.2f}\n")
+                f.write(f"PROJECT TOTAL: £{project_total:.2f}\n")
+
+            messagebox.showinfo("Report Saved", f"Breakdown report saved to {filename}")
+
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save breakdown report: {str(e)}")
+
     def create_ui(self):
         """Create the main application UI"""
         # Main frame
@@ -124,6 +504,8 @@ class KitchenQuoteApp:
         ttk.Entry(settings_frame, textvariable=self.sheet_width_var, width=8).grid(row=0, column=7, padx=5, pady=5)
         ttk.Label(settings_frame, text="×").grid(row=0, column=8)
         ttk.Entry(settings_frame, textvariable=self.sheet_height_var, width=8).grid(row=0, column=9, padx=5, pady=5)
+
+        ttk.Button(settings_frame, text="Settings", command=self.open_settings).grid(row=0, column=12, padx=10, pady=5)
 
         # Buttons for file operations
         ttk.Button(settings_frame, text="Save Project", command=self.save_project).grid(row=0, column=10, padx=10,
@@ -184,15 +566,20 @@ class KitchenQuoteApp:
         results_frame = ttk.Frame(main_frame, style='TFrame')
         results_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        ttk.Button(results_frame, text="Calculate Quote", command=self.update_quote).pack(side=tk.LEFT, padx=5, pady=5)
-        ttk.Button(results_frame, text="Show Cut List", command=self.show_cut_list).pack(side=tk.LEFT, padx=5, pady=5)
-
         # Quote summary section
         self.quote_frame = ttk.Frame(main_frame, style='TFrame')
         self.quote_frame.pack(fill=tk.X, padx=5, pady=5)
 
         # Initialize the calculator with default values
         self.update_calculator_settings()
+
+        ttk.Button(results_frame, text="Calculate Quote", command=self.update_quote).pack(side=tk.LEFT, padx=5, pady=5)
+        ttk.Button(results_frame, text="Show Cut List", command=self.show_cut_list).pack(side=tk.LEFT, padx=5, pady=5)
+        ttk.Button(results_frame, text="Export Customer Quote", command=self.export_customer_quote).pack(side=tk.LEFT,
+                                                                                                         padx=5, pady=5)
+        ttk.Button(results_frame, text="Show Unit Breakdown", command=self.show_unit_breakdown).pack(side=tk.LEFT,
+                                                                                                     padx=5, pady=5)
+
 
     def visualise_sheets(self, optimiser, parts, sheets):
         # Create visualizations
@@ -846,7 +1233,7 @@ class KitchenQuoteApp:
             return
 
         # Calculate the quote
-        quote = self.calculator.calculate_quote()
+        self.quote = self.calculator.calculate_quote()
 
         # Display the quote
         quote_text = ttk.Frame(self.quote_frame, style='TFrame')
@@ -860,47 +1247,50 @@ class KitchenQuoteApp:
                                                                                   sticky="w", pady=5)
 
         ttk.Label(summary, text="Units:").grid(row=1, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=str(quote['units'])).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=str(self.quote['units'])).grid(row=1, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Sheets Required:").grid(row=2, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=str(quote['total_sheets_required'])).grid(row=2, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=str(self.quote['total_sheets_required'])).grid(row=2, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Sheets Breakdown:").grid(row=2, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=str(quote['sheets_breakdown'])).grid(row=2, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=str(self.quote['sheets_breakdown'])).grid(row=2, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Material Cost:").grid(row=3, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=f"£{quote['material_cost']:.2f}").grid(row=3, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"£{self.quote['material_cost']:.2f}").grid(row=3, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Labor Hours:").grid(row=4, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=f"{quote['labor_hours']} hrs").grid(row=4, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"{self.quote['labor_hours']} hrs").grid(row=4, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Labor Cost:").grid(row=5, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=f"£{quote['labor_cost']:.2f}").grid(row=5, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"£{self.quote['labor_cost']:.2f}").grid(row=5, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="Subtotal:").grid(row=6, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=f"£{quote['subtotal']:.2f}").grid(row=6, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"£{self.quote['subtotal']:.2f}").grid(row=6, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text=f"Markup ({self.calculator.markup_percentage}%):").grid(row=7, column=0, sticky="w",
                                                                                         padx=5)
-        ttk.Label(summary, text=f"£{quote['markup']:.2f}").grid(row=7, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"£{self.quote['markup']:.2f}").grid(row=7, column=1, sticky="w", padx=5)
 
         ttk.Label(summary, text="TOTAL:", font=("Arial", 10, "bold")).grid(row=8, column=0, sticky="w", padx=5, pady=5)
-        ttk.Label(summary, text=f"£{quote['total']:.2f}", font=("Arial", 10, "bold")).grid(row=8, column=1, sticky="w",
+        ttk.Label(summary, text=f"£{self.quote['total']:.2f}", font=("Arial", 10, "bold")).grid(row=8, column=1, sticky="w",
                                                                                            padx=5, pady=5)
 
         ttk.Label(summary, text="Materials Used:").grid(row=6, column=0, sticky="w", padx=5)
-        ttk.Label(summary, text=f"{quote['materials_used']}").grid(row=6, column=1, sticky="w", padx=5)
+        ttk.Label(summary, text=f"{self.quote['materials_used']}").grid(row=6, column=1, sticky="w", padx=5)
+
+    def check_quote_exists(self):
+        if not self.quote:
+            messagebox.showerror("No Quote", "Calculated quote to proceed.")
+            return False
+        return True
 
     def show_cut_list(self):
         """Display the cut list in a new window"""
+
         self.update_calculator_settings()
 
-        if not self.calculator.units:
-            messagebox.showinfo("No Units", "Add units to generate a cut list.")
+        if not self.check_quote_exists():
             return
-
-        # Calculate the quote to get the cut list
-        quote = self.calculator.calculate_quote()
 
         self.visualise_sheets(self.calculator.optimizer, self.calculator.get_all_parts(), self.calculator.sheets)
 
@@ -921,7 +1311,7 @@ class KitchenQuoteApp:
         summary_frame = ttk.Frame(main_frame, style='TFrame')
         summary_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(summary_frame, text=f"Total Sheets Required: {quote['sheets_required']}").pack(anchor="w")
+        ttk.Label(summary_frame, text=f"Total Sheets Required: {self.quote['sheets_required']}").pack(anchor="w")
         ttk.Label(summary_frame,
                   text=f"Sheet Size: {self.calculator.sheet_width} × {self.calculator.sheet_height} mm").pack(
             anchor="w")
@@ -931,7 +1321,7 @@ class KitchenQuoteApp:
         notebook.pack(fill=tk.BOTH, expand=True, pady=10)
 
         # Add a tab for each sheet
-        for i, sheet in enumerate(quote['sheets']):
+        for i, sheet in enumerate(self.quote['sheets']):
             sheet_frame = ttk.Frame(notebook, style='TFrame')
             notebook.add(sheet_frame, text=f"Sheet {i + 1}")
 
@@ -971,7 +1361,7 @@ class KitchenQuoteApp:
         button_frame = ttk.Frame(main_frame, style='TFrame')
         button_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(button_frame, text="Print Cut List", command=lambda: self.print_cut_list(quote)).pack(side=tk.LEFT,
+        ttk.Button(button_frame, text="Print Cut List", command=lambda: self.print_cut_list(self.quote)).pack(side=tk.LEFT,
                                                                                                          padx=5)
         ttk.Button(button_frame, text="Close", command=cut_list_window.destroy).pack(side=tk.LEFT, padx=5)
 
@@ -1009,6 +1399,7 @@ class KitchenQuoteApp:
                     f"{unit.name} ({unit.unit_type}, Qty: {unit.quantity}): {unit.height} × {unit.width} × {unit.depth} mm\n")
 
         messagebox.showinfo("Cut List Saved", f"Cut list has been saved to {filename}")
+
 
     def save_project(self):
         """Save the current project to a file"""
