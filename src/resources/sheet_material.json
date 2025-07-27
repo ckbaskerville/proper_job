@@ -2,8 +2,8 @@
   {
     "VAT": 0.2,
     "Veneer Lacquer Cost": 7.5,
-    "Veneer Edging Cost": 4,
-    "Veneer Screw Cost": 3,
+    "Veneer Edging Cost": 4.0,
+    "Veneer Screw Cost": 3.0,
     "Materials": [
       {
         "Material": "Oak Veneer",
@@ -14,12 +14,12 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
+            "Thickness": 17,
+            "Sheet Cost (exc. VAT)": 57.95
+          },
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 57.95
           }
         ]
       },
@@ -32,12 +32,12 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
+            "Thickness": 17,
+            "Sheet Cost (exc. VAT)": 57.95
+          },
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 57.95
           }
         ]
       },
@@ -50,12 +50,12 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
+            "Thickness": 17,
+            "Sheet Cost (exc. VAT)": 57.95
+          },
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 57.95
           }
         ]
       },
@@ -68,20 +68,20 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 9,
-          "Sheet Cost (exc. VAT)": 51.25
+            "Thickness": 9,
+            "Sheet Cost (exc. VAT)": 51.25
           },
           {
-          "Thickness": 12,
-          "Sheet Cost (exc. VAT)": 58.95
+            "Thickness": 12,
+            "Sheet Cost (exc. VAT)": 58.95
           },
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 84.25
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 84.25
           },
           {
-          "Thickness": 24,
-          "Sheet Cost (exc. VAT)": 113.95
+            "Thickness": 24,
+            "Sheet Cost (exc. VAT)": 113.95
           }
         ]
       },
@@ -94,8 +94,8 @@
         "Face Frame": true,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 45.00
+            "Thickness": 17,
+            "Sheet Cost (exc. VAT)": 45.0
           }
         ]
       },
@@ -108,12 +108,12 @@
         "Face Frame": true,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
+            "Thickness": 17,
+            "Sheet Cost (exc. VAT)": 57.95
+          },
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 57.95
           }
         ]
       },
@@ -126,8 +126,8 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 60.00
+            "Thickness": 18,
+            "Sheet Cost (exc. VAT)": 60.0
           }
         ]
       }

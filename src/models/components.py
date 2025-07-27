@@ -57,7 +57,6 @@ class Carcass(Component):
         material: Material type
         material_thickness: Thickness of material in mm
         shelves: Number of internal shelves
-        has_back: Whether carcass has a back panel
     """
     name: str
     height: float
@@ -66,7 +65,6 @@ class Carcass(Component):
     material: str
     material_thickness: float
     shelves: int = 0
-    has_back: bool = True
 
     def __post_init__(self):
         """Validate carcass after creation."""
@@ -117,19 +115,15 @@ class Carcass(Component):
         """Generate all rectangular parts for the carcass."""
         parts = []
 
-        # Back panel (if present)
-        if self.has_back:
-            parts.append(Rectangle(
-                width=self.width,
-                height=self.height,
-                id=f"{self.name}_back"
-            ))
+        # Back panel
+        parts.append(Rectangle(
+            width=self.width,
+            height=self.height,
+            id=f"{self.name}_back"
+        ))
 
-        # TODO: Check if back panel fits in or over the sides
-        # Side panels (depth minus back thickness if back present)
-        effective_depth = self.depth
-        if self.has_back:
-            effective_depth -= self.material_thickness
+        # Side panels (depth minus back thickness)
+        effective_depth = self.depth - self.material_thickness
 
         for i in range(2):
             parts.append(Rectangle(
@@ -185,8 +179,7 @@ class Carcass(Component):
             'depth': self.depth,
             'material': self.material,
             'material_thickness': self.material_thickness,
-            'shelves': self.shelves,
-            'has_back': self.has_back
+            'shelves': self.shelves
         }
 
     @classmethod
@@ -483,20 +476,18 @@ class FaceFrame(Component):
 
     Attributes:
         carcass: Parent carcass for dimensions
-        frame_type: Material type for frame
+        material: Material type for frame
         moulding: Whether to include decorative moulding
         thickness: Frame material thickness
         frame_border: Width of frame borders
         bottom_piece_height: Height of bottom rail
-        has_center_stile: Whether to include center vertical piece
     """
     carcass: Carcass
-    frame_type: str
+    material: str
     moulding: bool
     thickness: int = DEFAULT_FACE_FRAME_THICKNESS
     frame_border: int = DEFAULT_FACE_FRAME_BORDER
     bottom_piece_height: int = DEFAULT_FACE_FRAME_BOTTOM_HEIGHT
-    has_center_stile: bool = False # TODO REMOVE
 
     def __post_init__(self):
         """Validate face frame after creation."""
@@ -504,7 +495,7 @@ class FaceFrame(Component):
 
     def validate(self) -> None:
         """Validate face frame specifications."""
-        if not self.frame_type or not self.frame_type.strip():
+        if not self.material or not self.material.strip():
             raise ValidationError("Frame type cannot be empty")
 
         if not MIN_THICKNESS <= self.thickness <= MAX_THICKNESS:
@@ -557,16 +548,6 @@ class FaceFrame(Component):
                 id=f"{self.carcass.name}_face_frame_side_{i+1}"
             ))
 
-        # Center stile if requested TODO remove
-        if self.has_center_stile and internal_dims.width > 600:
-            # Only add center stile for wider cabinets
-            center_height = internal_dims.height - self.frame_border
-            parts.append(Rectangle(
-                width=self.frame_border,
-                height=center_height,
-                id=f"{self.carcass.name}_face_frame_center"
-            ))
-
         return parts
 
     def get_total_area(self) -> float:
@@ -582,12 +563,11 @@ class FaceFrame(Component):
         """Convert to dictionary for serialization."""
         return {
             'type': self.component_type.value,
-            'frame_type': self.frame_type,
+            'frame_type': self.material,
             'moulding': self.moulding,
             'thickness': self.thickness,
             'frame_border': self.frame_border,
             'bottom_piece_height': self.bottom_piece_height,
-            'has_center_stile': self.has_center_stile,
             'carcass_name': self.carcass.name
         }
 

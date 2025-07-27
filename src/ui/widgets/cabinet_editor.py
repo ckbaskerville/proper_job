@@ -142,14 +142,6 @@ class CabinetEditorWidget(ScrollableFrame):
             width=10
         ).pack(side=tk.LEFT)
 
-        # Back panel
-        self.has_back_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            section,
-            text="Include back panel",
-            variable=self.has_back_var
-        ).pack(anchor=tk.W, pady=2)
-
     def _create_drawers_section(self, parent: ttk.Frame) -> None:
         """Create drawers section."""
         section = ttk.LabelFrame(parent, text="Drawers", padding=10)
@@ -225,7 +217,7 @@ class CabinetEditorWidget(ScrollableFrame):
         ttk.Combobox(
             type_frame,
             textvariable=self.door_type_var,
-            values=["Shaker", "Flat", "Raised Panel"],
+            values=["Shaker", "Flat"],
             state="readonly",
             width=20
         ).pack(side=tk.LEFT)
@@ -239,7 +231,7 @@ class CabinetEditorWidget(ScrollableFrame):
         ttk.Combobox(
             pos_frame,
             textvariable=self.door_position_var,
-            values=["Overlay", "Inset", "Partial Overlay"],
+            values=["Overlay", "Inset"],
             state="readonly",
             width=20
         ).pack(side=tk.LEFT)
@@ -305,13 +297,6 @@ class CabinetEditorWidget(ScrollableFrame):
             self.face_frame_options,
             text="Add moulding",
             variable=self.face_frame_moulding_var
-        ).pack(anchor=tk.W, pady=2)
-
-        self.face_frame_center_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.face_frame_options,
-            text="Add center stile",
-            variable=self.face_frame_center_var
         ).pack(anchor=tk.W, pady=2)
 
         # Bind type change
@@ -411,7 +396,6 @@ class CabinetEditorWidget(ScrollableFrame):
             carcass.material_thickness
         )
         self.shelves_var.set(carcass.shelves)
-        self.has_back_var.set(carcass.has_back)
 
         # Load drawers
         for drawer in cabinet.drawers:
@@ -435,9 +419,8 @@ class CabinetEditorWidget(ScrollableFrame):
 
         # Load face frame
         if cabinet.face_frame:
-            self.face_frame_type_var.set(cabinet.face_frame.frame_type)
+            self.face_frame_type_var.set(cabinet.face_frame.material)
             self.face_frame_moulding_var.set(cabinet.face_frame.moulding)
-            self.face_frame_center_var.set(cabinet.face_frame.has_center_stile)
 
         # Load quantity
         self.quantity_var.set(cabinet.quantity)
@@ -466,7 +449,6 @@ class CabinetEditorWidget(ScrollableFrame):
                 material=material,
                 material_thickness=thickness,
                 shelves=self.shelves_var.get(),
-                has_back=self.has_back_var.get()
             )
 
             # Create drawers
@@ -497,9 +479,8 @@ class CabinetEditorWidget(ScrollableFrame):
             if self.face_frame_type_var.get() != "None":
                 face_frame = FaceFrame(
                     carcass=carcass,
-                    frame_type=self.face_frame_type_var.get(),
+                    material=self.face_frame_type_var.get(),
                     moulding=self.face_frame_moulding_var.get(),
-                    has_center_stile=self.face_frame_center_var.get()
                 )
 
             # Create cabinet

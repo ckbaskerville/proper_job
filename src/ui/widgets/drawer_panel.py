@@ -84,7 +84,7 @@ class DrawerPanel(ttk.LabelFrame):
         size_frame = ttk.Frame(self)
         size_frame.pack(fill=tk.X, pady=2)
 
-        ttk.Label(size_frame, text="Size (mm):", width=15).pack(side=tk.LEFT)
+        ttk.Label(size_frame, text="Runner Size (mm):", width=15).pack(side=tk.LEFT)
         self.runner_size_var = tk.IntVar()
         self.size_combo = ttk.Combobox(
             size_frame,
@@ -100,7 +100,7 @@ class DrawerPanel(ttk.LabelFrame):
         capacity_frame = ttk.Frame(self)
         capacity_frame.pack(fill=tk.X, pady=2)
 
-        ttk.Label(capacity_frame, text="Capacity (kg):", width=15).pack(side=tk.LEFT)
+        ttk.Label(capacity_frame, text="Runner Capacity (kg):", width=15).pack(side=tk.LEFT)
         self.runner_capacity_var = tk.IntVar()
         self.capacity_combo = ttk.Combobox(
             capacity_frame,
@@ -117,14 +117,6 @@ class DrawerPanel(ttk.LabelFrame):
             text="£0.00 per pair"
         )
         self.price_label.pack(side=tk.LEFT, padx=10)
-
-        # Soft close option
-        self.soft_close_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            self,
-            text="Soft close",
-            variable=self.soft_close_var
-        ).pack(anchor=tk.W, pady=2)
 
         # Set defaults
         if brands:
@@ -239,8 +231,7 @@ class DrawerPanel(ttk.LabelFrame):
                 runner_size=size,
                 runner_capacity=capacity,
                 carcass=carcass,
-                runner_price=runner_price,
-                has_soft_close=self.soft_close_var.get()
+                runner_price=runner_price
             )
 
         except Exception as e:
@@ -260,5 +251,4 @@ class DrawerPanel(ttk.LabelFrame):
         self.runner_size_var.set(drawer.runner_size)
         self._on_size_changed()
         self.runner_capacity_var.set(drawer.runner_capacity)
-        self.soft_close_var.set(drawer.has_soft_close)
         self._update_price()

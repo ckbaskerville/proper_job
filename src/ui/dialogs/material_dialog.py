@@ -5,9 +5,9 @@ from tkinter import ttk, messagebox
 from typing import Dict, Any, List, Optional
 import json
 
-from ..base import BaseDialog
-from config import DarkTheme
-from data.repository import DataRepository
+from src.ui.dialogs.base_dialog import BaseDialog
+from src.config import DarkTheme
+from src.data.repository import DataRepository
 
 
 class MaterialDialog(BaseDialog):
@@ -308,13 +308,13 @@ class MaterialDatabaseDialog(BaseDialog):
         self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
 
         # Configure columns
-        self.tree.heading('material', text='Material')
-        self.tree.heading('veneer', text='Veneer')
-        self.tree.heading('hardwood', text='Hardwood')
-        self.tree.heading('carcass', text='Carcass')
-        self.tree.heading('door', text='Door')
-        self.tree.heading('face_frame', text='Face Frame')
-        self.tree.heading('thicknesses', text='Thicknesses')
+        self.tree.heading('material', text='Material', anchor='w')
+        self.tree.heading('veneer', text='Veneer', anchor='w')
+        self.tree.heading('hardwood', text='Hardwood', anchor='w')
+        self.tree.heading('carcass', text='Carcass', anchor='w')
+        self.tree.heading('door', text='Door', anchor='w')
+        self.tree.heading('face_frame', text='Face Frame', anchor='w')
+        self.tree.heading('thicknesses', text='Thicknesses', anchor='w')
 
         # Column widths
         self.tree.column('material', width=150)

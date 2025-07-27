@@ -352,7 +352,7 @@ class Project:
             # Face frame materials
             if cabinet.face_frame:
                 area = cabinet.face_frame.get_total_area() / 1_000_000
-                material_areas[cabinet.face_frame.frame_type] += area * cabinet.quantity
+                material_areas[cabinet.face_frame.material] += area * cabinet.quantity
 
         return dict(material_areas)
 

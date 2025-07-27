@@ -8,9 +8,17 @@ from .runner_dialog import RunnerDialog
 
 
 class SettingsDialog:
-    def __init__(self, parent, settings_manager, theme_manager, materials_dict, labour_cost_dict, runners_dict):
+    def __init__(self,
+                 parent,
+                 settings_manager,
+                 paths,
+                 theme_manager,
+                 materials_dict,
+                 labour_cost_dict,
+                 runners_dict):
         self.parent = parent
         self.settings_manager = settings_manager
+        self.paths = paths
         self.theme_manager = theme_manager
         self.theme = self.theme_manager.get_theme("dark")
         self.dialog = None
@@ -117,12 +125,12 @@ class SettingsDialog:
         self.materials_tree = ttk.Treeview(materials_section, columns=columns, show='headings', height=8)
 
         # Configure columns
-        self.materials_tree.heading('material', text='Material Name')
-        self.materials_tree.heading('veneer', text='Veneer')
-        self.materials_tree.heading('hardwood', text='Hardwood')
-        self.materials_tree.heading('carcass', text='Carcass')
-        self.materials_tree.heading('door', text='Door')
-        self.materials_tree.heading('face_frame', text='Face Frame')
+        self.materials_tree.heading('material', text='Material Name', anchor='w')
+        self.materials_tree.heading('veneer', text='Veneer', anchor='w')
+        self.materials_tree.heading('hardwood', text='Hardwood', anchor='w')
+        self.materials_tree.heading('carcass', text='Carcass', anchor='w')
+        self.materials_tree.heading('door', text='Door', anchor='w')
+        self.materials_tree.heading('face_frame', text='Face Frame', anchor='w')
 
         self.materials_tree.column('material', width=150)
         self.materials_tree.column('veneer', width=80)
@@ -214,11 +222,11 @@ class SettingsDialog:
         doors_columns = ('material', 'type', 'per_door', 'moulding', 'cut_handle')
         self.doors_tree = ttk.Treeview(doors_frame, columns=doors_columns, show='headings', height=8)
 
-        self.doors_tree.heading('material', text='Material')
-        self.doors_tree.heading('type', text='Type')
-        self.doors_tree.heading('per_door', text='Per Door (hrs)')
-        self.doors_tree.heading('moulding', text='Moulding (hrs)')
-        self.doors_tree.heading('cut_handle', text='Cut Handle (hrs)')
+        self.doors_tree.heading('material', text='Material', anchor='w')
+        self.doors_tree.heading('type', text='Type', anchor='w')
+        self.doors_tree.heading('per_door', text='Per Door (hrs)', anchor='w')
+        self.doors_tree.heading('moulding', text='Moulding (hrs)', anchor='w')
+        self.doors_tree.heading('cut_handle', text='Cut Handle (hrs)', anchor='w')
 
         self.doors_tree.column('material', width=120)
         self.doors_tree.column('type', width=100)
@@ -326,9 +334,9 @@ class SettingsDialog:
         runners_columns = ('length', 'capacity', 'price')
         self.runners_tree = ttk.Treeview(runners_section, columns=runners_columns, show='headings', height=12)
 
-        self.runners_tree.heading('length', text='Length (mm)')
-        self.runners_tree.heading('capacity', text='Capacity (kg)')
-        self.runners_tree.heading('price', text='Price (£)')
+        self.runners_tree.heading('length', text='Length (mm)', anchor='w')
+        self.runners_tree.heading('capacity', text='Capacity (kg)', anchor='w')
+        self.runners_tree.heading('price', text='Price (£)', anchor='w')
 
         self.runners_tree.column('length', width=120)
         self.runners_tree.column('capacity', width=120)
@@ -434,7 +442,7 @@ class SettingsDialog:
     # Material management methods
     def add_material(self):
         """Add a new material"""
-        dialog = MaterialDialog(self.dialog, "Add Material")
+        dialog = MaterialDialog(self.dialog, self.material_data)
         if dialog.result:
             self.materials_data["Materials"].append(dialog.result)
             self.refresh_materials_tree()
@@ -451,7 +459,7 @@ class SettingsDialog:
         index = self.materials_tree.index(selected[0])
         material_data = self.materials_data["Materials"][index]
 
-        dialog = MaterialDialog(self.dialog, "Edit Material", material_data)
+        dialog = MaterialDialog(self.dialog, material_data)
         if dialog.result:
             self.materials_data["Materials"][index] = dialog.result
             self.refresh_materials_tree()
@@ -578,7 +586,7 @@ class SettingsDialog:
             index = self.runners_tree.index(selected[0])
             runner_data = brand_data["Runners"][index]
 
-            dialog = RunnerDialog(self.dialog, "Edit Runner", runner_data)
+            dialog = RunnerDialog(self.dialog, runner_data)
             if dialog.result:
                 brand_data["Runners"][index] = dialog.result
                 self.refresh_runners_tree()
@@ -626,31 +634,19 @@ class SettingsDialog:
                 self.labour_data["Face Frames"][material_type]["Moulding"] = vars_dict["moulding"].get()
 
             # Save to files
-            with open(self.settings_manager.MATERIALS_PATH, 'w') as f:
+            with open(self.paths.materials_file, 'w') as f:
                 json.dump([self.materials_data], f, indent=2)
 
-            with open(self.settings_manager.LABOUR_PATH, 'w') as f:
+            with open(self.paths.labor_costs_file, 'w') as f:
                 json.dump(self.labour_data, f, indent=2)
 
-            with open(self.settings_manager.RUNNERS_PATH, 'w') as f:
+            with open(self.paths.runners_file, 'w') as f:
                 json.dump(self.runners_data, f, indent=2)
 
             # Update app instance data
             self.settings_manager.materials_dict = self.materials_data
             self.settings_manager.labour_cost_dict = self.labour_data
             self.settings_manager.runners_dict = self.runners_data
-
-            # Recreate calculator with new data
-            self.settings_manager.calculator = self.settings_manager.QuoteCalculator(self.settings_manager.labour_cost_dict, self.settings_manager.materials_dict)
-
-            # Update sheet prices in calculator
-            for material in self.materials_data["Materials"]:
-                for thickness in material["Cost"]:
-                    self.settings_manager.calculator.set_sheet_price(
-                        material["Material"],
-                        thickness["Thickness"],
-                        thickness["Sheet Cost (exc. VAT)"] * (1 + self.materials_data["VAT"])
-                    )
 
             self.has_changes = False
             messagebox.showinfo("Success", "All settings have been saved successfully!")

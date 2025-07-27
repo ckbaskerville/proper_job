@@ -11,6 +11,7 @@ from src.models.geometry import Rectangle
 from src.algorithms.bin_packing_ga import BinPackingGA
 from .material_manager import MaterialManager
 from .labor_manager import LaborManager
+from ..config import SettingsManager
 
 logger = logging.getLogger(__name__)
 
@@ -196,12 +197,12 @@ class QuoteCalculator:
                     groups
                 )
 
-            if unit.face_frame and unit.face_frame.frame_type:
+            if unit.face_frame and unit.face_frame.material:
                 self._add_component_parts(
                     unit.face_frame,
                     unit.quantity,
                     groups,
-                    material_override=unit.carcass.material,
+                    material_override=unit.face_frame.material,
                     thickness_override=unit.face_frame.thickness
                 )
 
@@ -443,9 +444,9 @@ class QuoteCalculator:
             hours += door_hours * unit.doors.quantity
 
         # Face frame labor
-        if unit.face_frame and unit.face_frame.frame_type:
+        if unit.face_frame and unit.face_frame.material:
             hours += self.labor_manager.get_face_frame_hours(
-                unit.face_frame.frame_type,
+                unit.face_frame.material,
                 unit.face_frame.moulding
             )
 
@@ -493,7 +494,7 @@ class QuoteCalculator:
                     components.append(door_breakdown)
 
             # Face frame breakdown
-            if unit.face_frame and unit.face_frame.frame_type:
+            if unit.face_frame and unit.face_frame.material:
                 face_frame_breakdown = self._calculate_face_frame_breakdown(
                     unit,
                     optimization_results
@@ -681,7 +682,7 @@ class QuoteCalculator:
         )
 
         labor_hours = self.labor_manager.get_face_frame_hours(
-            face_frame.frame_type,
+            face_frame.material,
             face_frame.moulding
         )
         labor_cost = labor_hours * self.labor_manager.hourly_rate
@@ -690,7 +691,7 @@ class QuoteCalculator:
 
         return ComponentBreakdown(
             component_name="Face Frame",
-            material=face_frame.frame_type,
+            material=face_frame.material,
             thickness=thickness,
             dimensions=f"{unit.carcass.height} × {unit.carcass.width}",
             parts_count=len(face_frame.get_parts()),

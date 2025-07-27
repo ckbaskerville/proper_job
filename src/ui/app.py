@@ -23,7 +23,10 @@ from src.business.material_manager import MaterialManager
 from src.business.labor_manager import LaborManager
 from src.data.repository import DataRepository, ProjectRepository
 from src.models import Cabinet, Project
-from .dialogs.settings_dialog import SettingsDialog
+from src.ui.dialogs.export_dialog import ExportDialog
+from src.ui.dialogs.unit_breakdown_dialog import UnitBreakdownDialog
+from src.ui.dialogs.cut_list_dialog import CutListDialog
+from src.ui.dialogs.settings_dialog import SettingsDialog
 from .widgets import (
     UnitTableWidget,
     QuoteDisplayWidget,
@@ -57,6 +60,7 @@ class KitchenQuoteApp:
         self.settings_manager = SettingsManager()
         self.theme_manager = ThemeManager()
         self.paths = PathConfig()
+
 
         # Setup window
         self._setup_window()
@@ -406,19 +410,10 @@ class KitchenQuoteApp:
         menubar.add_cascade(label="Help", menu=help_menu)
 
         help_menu.add_command(
-            label="User Guide",
-            accelerator="F1",
-            command=self._show_help
-        )
-        help_menu.add_command(
             label="Keyboard Shortcuts",
             command=self._show_shortcuts
         )
-        help_menu.add_separator()
-        help_menu.add_command(
-            label="About",
-            command=self._show_about
-        )
+
 
     def _bind_events(self) -> None:
         """Bind keyboard shortcuts and events."""
@@ -892,38 +887,38 @@ class KitchenQuoteApp:
 
     def _show_cut_list(self) -> None:
         """Show cut list dialog."""
-        # if not self.current_quote:
-        #     messagebox.showinfo(
-        #         "No Quote",
-        #         "Please calculate a quote first."
-        #     )
-        #     return
-        #
-        # dialog = CutListDialog(
-        #     self.root,
-        #     self.current_quote,
-        #     self.calculator,
-        #     self._current_project
-        # )
-        # dialog.show()
+        if not self.current_quote:
+            messagebox.showinfo(
+                "No Quote",
+                "Please calculate a quote first."
+            )
+            return
+
+        dialog = CutListDialog(
+            self.root,
+            self.current_quote.to_dict(),
+            self.calculator,
+            self._current_project
+        )
+        dialog.show()
 
     def _show_unit_breakdown(self) -> None:
         """Show unit breakdown dialog."""
-        # if not self.current_quote:
-        #     messagebox.showinfo(
-        #         "No Quote",
-        #         "Please calculate a quote first."
-        #     )
-        #     return
-        #
-        # breakdown = self.calculator.calculate_unit_breakdown()
-        # dialog = UnitBreakdownDialog(
-        #     self.root,
-        #     breakdown,
-        #     self.calculator,
-        #     self.settings_manager.settings.currency_symbol
-        # )
-        # dialog.show()
+        if not self.current_quote:
+            messagebox.showinfo(
+                "No Quote",
+                "Please calculate a quote first."
+            )
+            return
+
+        breakdown = self.calculator.calculate_unit_breakdown()
+        dialog = UnitBreakdownDialog(
+            self.root,
+            breakdown,
+            self.calculator,
+            self.settings_manager.settings.currency_symbol
+        )
+        dialog.show()
 
     def _show_visualization(self) -> None:
         """Show sheet visualization."""
@@ -942,23 +937,23 @@ class KitchenQuoteApp:
 
     def _export_quote(self) -> None:
         """Export quote."""
-        # if not self.current_quote:
-        #     messagebox.showinfo(
-        #         "No Quote",
-        #         "Please calculate a quote first."
-        #     )
-        #     return
-        #
-        # dialog = ExportDialog(
-        #     self.root,
-        #     self._current_project,
-        #     self.current_quote,
-        #     self.calculator,
-        #     self.settings_manager.settings
-        # )
-        #
-        # if dialog.export():
-        #     self._update_status("Quote exported successfully", timeout=3000)
+        if not self.current_quote:
+            messagebox.showinfo(
+                "No Quote",
+                "Please calculate a quote first."
+            )
+            return
+
+        dialog = ExportDialog(
+            self.root,
+            self._current_project,
+            self.current_quote,
+            self.calculator,
+            self.settings_manager.settings
+        )
+
+        if dialog.export():
+            self._update_status("Quote exported successfully", timeout=3000)
 
     # Settings and tools methods
     def _open_settings(self) -> None:
@@ -966,13 +961,14 @@ class KitchenQuoteApp:
         dialog = SettingsDialog(
             self.root,
             self.settings_manager,
+            self.paths,
             self.theme_manager,
             self.materials_data,
             self.labor_data,
-            self.runners_data
+            self.runners_data,
         )
 
-        if dialog.show():
+        if dialog.has_changes:
             # Reload resources if changed
             self._load_resources()
             self._setup_business_logic()
@@ -980,16 +976,16 @@ class KitchenQuoteApp:
 
     def _edit_project_settings(self) -> None:
         """Edit project-specific settings."""
-        # from .dialogs import ProjectSettingsDialog
-        #
-        # dialog = ProjectSettingsDialog(
-        #     self.root,
-        #     self._current_project.settings
-        # )
-        #
-        # if dialog.show():
-        #     self._set_modified()
-        #     self._update_status("Project settings updated", timeout=3000)
+        from .dialogs import ProjectSettingsDialog
+
+        dialog = ProjectSettingsDialog(
+            self.root,
+            self._current_project.settings
+        )
+
+        if dialog.show():
+            self._set_modified()
+            self._update_status("Project settings updated", timeout=3000)
 
     def _change_theme(self, theme_name: str) -> None:
         """Change application theme.
@@ -1004,32 +1000,32 @@ class KitchenQuoteApp:
 
     def _open_material_database(self) -> None:
         """Open material database dialog."""
-        # from .dialogs import MaterialDatabaseDialog
-        #
-        # dialog = MaterialDatabaseDialog(
-        #     self.root,
-        #     self.materials_data,
-        #     self.repository
-        # )
-        #
-        # if dialog.show():
-        #     self._load_resources()
-        #     self._setup_business_logic()
-        #     self._update_status("Material database updated", timeout=3000)
+        from .dialogs import MaterialDatabaseDialog
+
+        dialog = MaterialDatabaseDialog(
+            self.root,
+            self.materials_data,
+            self.repository
+        )
+
+        if dialog.show():
+            self._load_resources()
+            self._setup_business_logic()
+            self._update_status("Material database updated", timeout=3000)
 
     def _open_runner_database(self) -> None:
         """Open runner database dialog."""
-        # from .dialogs import RunnerDatabaseDialog
-        #
-        # dialog = RunnerDatabaseDialog(
-        #     self.root,
-        #     self.runners_data,
-        #     self.repository
-        # )
-        #
-        # if dialog.show():
-        #     self._load_resources()
-        #     self._update_status("Runner database updated", timeout=3000)
+        from .dialogs import RunnerDatabaseDialog
+
+        dialog = RunnerDatabaseDialog(
+            self.root,
+            self.runners_data,
+            self.repository
+        )
+
+        if dialog.show():
+            self._load_resources()
+            self._update_status("Runner database updated", timeout=3000)
 
     def _clean_temp_files(self) -> None:
         """Clean temporary files."""
@@ -1051,15 +1047,10 @@ class KitchenQuoteApp:
 
     def _show_shortcuts(self) -> None:
         """Show keyboard shortcuts."""
-    #     from .dialogs import ShortcutsDialog
-    #
-    #     dialog = ShortcutsDialog(self.root)
-    #     dialog.show()
+        from .dialogs import ShortcutsDialog
 
-    def _show_about(self) -> None:
-        """Show about dialog."""
-    #     dialog = AboutDialog(self.root)
-    #     dialog.show()
+        dialog = ShortcutsDialog(self.root)
+        dialog.show()
 
     # Autosave methods
     def _start_autosave(self) -> None:
