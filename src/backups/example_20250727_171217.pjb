@@ -1,0 +1,64 @@
+{
+  "version": "2.0",
+  "name": "example",
+  "cabinets": [
+    {
+      "carcass": {
+        "type": "carcass",
+        "name": "cabinet 1",
+        "height": 300.0,
+        "width": 300.0,
+        "depth": 300.0,
+        "material": "Oak Veneer",
+        "material_thickness": 17.0,
+        "shelves": 0,
+        "has_back": true
+      },
+      "drawers": [
+        {
+          "type": "drawer",
+          "height": 100,
+          "thickness": 17,
+          "material": "Oak Veneer",
+          "runner_model": "HETTICH",
+          "runner_size": 250,
+          "runner_capacity": 40,
+          "runner_price": 24.8,
+          "has_soft_close": false,
+          "carcass_name": "cabinet 1"
+        }
+      ],
+      "quantity": 2,
+      "doors": {
+        "type": "door",
+        "material": "Birch Ply",
+        "door_type": "Shaker",
+        "material_thickness": 24.0,
+        "moulding": true,
+        "cut_handle": false,
+        "quantity": 1,
+        "position": "Overlay",
+        "margin": 4,
+        "inter_door_margin": 1,
+        "hinge_bore_diameter": 35,
+        "carcass_name": "cabinet 1"
+      },
+      "face_frame": null,
+      "hardware": {},
+      "notes": ""
+    }
+  ],
+  "settings": {
+    "sheet_width": 2440.0,
+    "sheet_height": 1220.0,
+    "labor_rate": 40.0,
+    "markup_percentage": 20.0,
+    "currency_symbol": "£",
+    "company_name": "",
+    "default_material_thickness": 18.0
+  },
+  "created_date": "2025-07-27T15:43:37.603959",
+  "modified_date": "2025-07-27T15:47:36.395051",
+  "customer_info": {},
+  "notes": ""
+}

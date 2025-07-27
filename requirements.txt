@@ -1,0 +1,15 @@
+# Core dependencies
+matplotlib
+Pillow
+
+# Development dependencies (optional)
+# pytest>=7.0
+# black>=22.0
+# flake8>=5.0
+# mypy>=0.990
+
+# Note: tkinter is typically included with Python installations
+# If not available, it needs to be installed separately:
+# - Ubuntu/Debian: sudo apt-get install python3-tk
+# - macOS: Should be included with Python
+# - Windows: Should be included with Python

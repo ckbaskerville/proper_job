@@ -1,0 +1,19 @@
+[
+  {
+    "Manufacturer": "The Drawer Box Company",
+    "Drawers": [
+        {
+            "Material": "Oak",
+            "Width": 600,
+            "Height": 150,
+            "Depth": 500,
+            "Material": "Plywood",
+            "Finish": "Natural"
+        },
+        {
+            "Material": "Walnut",
+            "Finish": "Natural"
+        }
+    ]
+  }
+]

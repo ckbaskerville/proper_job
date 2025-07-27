@@ -42,7 +42,7 @@
         ]
       },
       {
-        "Material": "Birch Veneer",
+        "Material": "Ash Veneer",
         "Veneer": true,
         "Hardwood": false,
         "Carcass": true,
@@ -60,6 +60,32 @@
         ]
       },
       {
+        "Material": "Birch Ply",
+        "Veneer": false,
+        "Hardwood": true,
+        "Carcass": true,
+        "Door": true,
+        "Face Frame": false,
+        "Cost": [
+          {
+          "Thickness": 9,
+          "Sheet Cost (exc. VAT)": 51.25
+          },
+          {
+          "Thickness": 12,
+          "Sheet Cost (exc. VAT)": 58.95
+          },
+          {
+          "Thickness": 18,
+          "Sheet Cost (exc. VAT)": 84.25
+          },
+          {
+          "Thickness": 24,
+          "Sheet Cost (exc. VAT)": 113.95
+          }
+        ]
+      },
+      {
         "Material": "Melamine",
         "Veneer": false,
         "Hardwood": false,
@@ -69,11 +95,7 @@
         "Cost": [
           {
           "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
-          {
-          "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+          "Sheet Cost (exc. VAT)": 45.00
           }
         ]
       },
@@ -104,12 +126,8 @@
         "Face Frame": false,
         "Cost": [
           {
-          "Thickness": 17,
-          "Sheet Cost (exc. VAT)": 57.95
-        },
-          {
           "Thickness": 18,
-          "Sheet Cost (exc. VAT)": 57.95
+          "Sheet Cost (exc. VAT)": 60.00
           }
         ]
       }
