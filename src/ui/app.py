@@ -23,6 +23,7 @@ from src.business.material_manager import MaterialManager
 from src.business.labor_manager import LaborManager
 from src.data.repository import DataRepository, ProjectRepository
 from src.models import Cabinet, Project
+from .dialogs.settings_dialog import SettingsDialog
 from .widgets import (
     UnitTableWidget,
     QuoteDisplayWidget,
@@ -962,19 +963,20 @@ class KitchenQuoteApp:
     # Settings and tools methods
     def _open_settings(self) -> None:
         """Open settings dialog."""
-        # dialog = SettingsDialog(
-        #     self.root,
-        #     self.settings_manager,
-        #     self.materials_data,
-        #     self.labor_data,
-        #     self.runners_data
-        # )
-        #
-        # if dialog.show():
-        #     # Reload resources if changed
-        #     self._load_resources()
-        #     self._setup_business_logic()
-        #     self._update_status("Settings updated", timeout=3000)
+        dialog = SettingsDialog(
+            self.root,
+            self.settings_manager,
+            self.theme_manager,
+            self.materials_data,
+            self.labor_data,
+            self.runners_data
+        )
+
+        if dialog.show():
+            # Reload resources if changed
+            self._load_resources()
+            self._setup_business_logic()
+            self._update_status("Settings updated", timeout=3000)
 
     def _edit_project_settings(self) -> None:
         """Edit project-specific settings."""
