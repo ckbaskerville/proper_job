@@ -442,7 +442,7 @@ class SettingsDialog:
     # Material management methods
     def add_material(self):
         """Add a new material"""
-        dialog = MaterialDialog(self.dialog, self.material_data)
+        dialog = MaterialDialog(self.dialog, self.materials_data)
         if dialog.result:
             self.materials_data["Materials"].append(dialog.result)
             self.refresh_materials_tree()

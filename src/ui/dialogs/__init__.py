@@ -8,6 +8,7 @@ from .material_dialog import MaterialDialog, MaterialDatabaseDialog
 from .runner_dialog import RunnerDialog, RunnerDatabaseDialog
 from .project_settings_dialog import ProjectSettingsDialog
 from .shortcuts_dialog import ShortcutsDialog
+from .labor_dialog import LaborDatabaseDialog
 
 __all__ = [
     'SettingsDialog',
@@ -19,5 +20,8 @@ __all__ = [
     'RunnerDialog',
     'RunnerDatabaseDialog',
     'ProjectSettingsDialog',
-    'ShortcutsDialog'
+    'ShortcutsDialog',
+    'LaborDatabaseDialog'
 ]
+
+

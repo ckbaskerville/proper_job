@@ -73,28 +73,6 @@ class RunnerDialog(BaseDialog):
         )
         ttk.Entry(price_frame, textvariable=self.price_var, width=15).pack(side=tk.LEFT)
 
-        # Features
-        features_frame = ttk.LabelFrame(parent, text="Features", padding=10)
-        features_frame.pack(fill=tk.X, pady=10)
-
-        self.soft_close_var = tk.BooleanVar(
-            value=self.runner_data.get('SoftClose', True) if self.runner_data else True
-        )
-        ttk.Checkbutton(
-            features_frame,
-            text="Soft Close",
-            variable=self.soft_close_var
-        ).pack(anchor=tk.W)
-
-        self.full_extension_var = tk.BooleanVar(
-            value=self.runner_data.get('FullExtension', True) if self.runner_data else True
-        )
-        ttk.Checkbutton(
-            features_frame,
-            text="Full Extension",
-            variable=self.full_extension_var
-        ).pack(anchor=tk.W)
-
     def _validate(self) -> bool:
         """Validate dialog input."""
         if self.price_var.get() < 0:
@@ -108,9 +86,7 @@ class RunnerDialog(BaseDialog):
         return {
             'Length': self.length_var.get(),
             'Capacity': self.capacity_var.get(),
-            'Price': self.price_var.get(),
-            'SoftClose': self.soft_close_var.get(),
-            'FullExtension': self.full_extension_var.get()
+            'Price': self.price_var.get()
         }
 
 
@@ -145,7 +121,7 @@ class RunnerDatabaseDialog(BaseDialog):
 
         # Left panel - Brands
         brands_frame = ttk.LabelFrame(paned, text="Brands", padding=10)
-        paned.add(brands_frame, weight=1)
+        paned.add(brands_frame, weight=4)
 
         # Brand list
         self.brand_listbox = tk.Listbox(brands_frame, height=20)
@@ -155,14 +131,14 @@ class RunnerDatabaseDialog(BaseDialog):
         brand_btn_frame = ttk.Frame(brands_frame)
         brand_btn_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Button(brand_btn_frame, text="Add Brand", command=self._add_brand).pack(
-            side=tk.LEFT, padx=2
+        ttk.Button(brand_btn_frame, text="Delete", command=self._delete_brand).pack(
+            side=tk.BOTTOM, padx=2
         )
         ttk.Button(brand_btn_frame, text="Rename", command=self._rename_brand).pack(
-            side=tk.LEFT, padx=2
+            side=tk.BOTTOM, padx=2
         )
-        ttk.Button(brand_btn_frame, text="Delete", command=self._delete_brand).pack(
-            side=tk.LEFT, padx=2
+        ttk.Button(brand_btn_frame, text="Add Brand", command=self._add_brand).pack(
+            side=tk.BOTTOM, padx=2
         )
 
         # Right panel - Runners
@@ -170,7 +146,7 @@ class RunnerDatabaseDialog(BaseDialog):
         paned.add(runners_frame, weight=2)
 
         # Runners table
-        columns = ('length', 'capacity', 'price', 'features')
+        columns = ('length', 'capacity', 'price')
         self.runner_tree = ttk.Treeview(
             runners_frame,
             columns=columns,
@@ -182,12 +158,10 @@ class RunnerDatabaseDialog(BaseDialog):
         self.runner_tree.heading('length', text='Length (mm)', anchor='w')
         self.runner_tree.heading('capacity', text='Capacity (kg)', anchor='w')
         self.runner_tree.heading('price', text='Price (£)', anchor='w')
-        self.runner_tree.heading('features', text='Features', anchor='w')
 
         self.runner_tree.column('length', width=100)
         self.runner_tree.column('capacity', width=100)
         self.runner_tree.column('price', width=100)
-        self.runner_tree.column('features', width=200)
 
         # Scrollbar
         scrollbar = ttk.Scrollbar(
@@ -214,12 +188,12 @@ class RunnerDatabaseDialog(BaseDialog):
         ttk.Button(runner_btn_frame, text="Delete Runner", command=self._delete_runner).pack(
             side=tk.LEFT, padx=2
         )
-        ttk.Button(runner_btn_frame, text="Import", command=self._import_runners).pack(
-            side=tk.LEFT, padx=20
-        )
-        ttk.Button(runner_btn_frame, text="Export", command=self._export_runners).pack(
-            side=tk.LEFT, padx=2
-        )
+        # ttk.Button(runner_btn_frame, text="Import", command=self._import_runners).pack(
+        #     side=tk.LEFT, padx=20
+        # )
+        # ttk.Button(runner_btn_frame, text="Export", command=self._export_runners).pack(
+        #     side=tk.LEFT, padx=2
+        # )
 
         # Bind brand selection
         self.brand_listbox.bind('<<ListboxSelect>>', self._on_brand_selected)
@@ -260,17 +234,11 @@ class RunnerDatabaseDialog(BaseDialog):
 
         # Add runners
         for runner in brand['Runners']:
-            features = []
-            if runner.get('SoftClose', True):
-                features.append('Soft Close')
-            if runner.get('FullExtension', True):
-                features.append('Full Extension')
 
             values = (
                 runner['Length'],
                 runner['Capacity'],
-                f"£{runner['Price']:.2f}",
-                ', '.join(features)
+                f"£{runner['Price']:.2f}"
             )
 
             self.runner_tree.insert('', tk.END, values=values)

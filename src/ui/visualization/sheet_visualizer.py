@@ -296,8 +296,8 @@ class VisualizationWindow:
                     center_x, center_y,
                     rect.id,
                     ha='center', va='center',
-                    fontsize=10, fontweight='bold',
-                    color='white'
+                    fontsize=8,
+                    color='black'
                 )
 
             # Add dimensions if enabled
@@ -312,7 +312,7 @@ class VisualizationWindow:
                     dim_text,
                     ha='center', va='center',
                     fontsize=8,
-                    color='white'
+                    color='black'
                 )
 
         # Set axis properties

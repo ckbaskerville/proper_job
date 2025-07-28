@@ -36,7 +36,7 @@ class Settings:
     default_labor_rate: float = DEFAULT_LABOR_RATE
     default_markup: float = DEFAULT_MARKUP_PERCENTAGE
     default_material: str = 'Laminate'
-    default_thickness: float = 18.0
+    default_thickness: float = 18.0#
 
     # Behavior
     autosave_enabled: bool = True

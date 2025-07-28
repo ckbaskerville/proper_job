@@ -64,7 +64,7 @@
         "Veneer": false,
         "Hardwood": true,
         "Carcass": true,
-        "Door": true,
+        "Door": false,
         "Face Frame": false,
         "Cost": [
           {
@@ -114,6 +114,10 @@
           {
             "Thickness": 18,
             "Sheet Cost (exc. VAT)": 57.95
+          },
+          {
+            "Thickness": 25,
+            "Sheet Cost (exc. VAT)": 60.0
           }
         ]
       },

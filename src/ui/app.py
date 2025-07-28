@@ -187,7 +187,10 @@ class KitchenQuoteApp:
             on_edit_unit=self._edit_unit,
             on_duplicate_unit=self._duplicate_unit,
             on_remove_unit=self._remove_unit,
-            on_settings=self._open_settings
+            on_settings=self._open_settings,
+            on_materials_settings=self._open_material_database,
+            on_runners_settings=self._open_runner_database,
+            on_labor_settings=self._open_labor_database,
         )
         self.toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
@@ -244,6 +247,12 @@ class KitchenQuoteApp:
             quote_controls,
             text="Unit Breakdown",
             command=self._show_unit_breakdown
+        ).pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(
+            quote_controls,
+            text="Visualise Sheets",
+            command=self._show_visualization
         ).pack(side=tk.LEFT, padx=2)
 
         ttk.Button(
@@ -1020,6 +1029,20 @@ class KitchenQuoteApp:
         dialog = RunnerDatabaseDialog(
             self.root,
             self.runners_data,
+            self.repository
+        )
+
+        if dialog.show():
+            self._load_resources()
+            self._update_status("Runner database updated", timeout=3000)
+
+    def _open_labor_database(self) -> None:
+        """Open runner database dialog."""
+        from .dialogs import LaborDatabaseDialog
+
+        dialog = LaborDatabaseDialog(
+            self.root,
+            self.labor_data,
             self.repository
         )
 

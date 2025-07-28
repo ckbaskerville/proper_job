@@ -85,16 +85,32 @@ class MaterialDialog(BaseDialog):
         cost_frame = ttk.LabelFrame(parent, text="Cost Information", padding=10)
         cost_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
-        # Cost entries container
-        self.cost_container = ttk.Frame(cost_frame)
-        self.cost_container.pack(fill=tk.BOTH, expand=True)
-
         # Headers
-        header_frame = ttk.Frame(self.cost_container)
+        header_frame = ttk.Frame(cost_frame)
         header_frame.pack(fill=tk.X, pady=5)
         ttk.Label(header_frame, text="Thickness (mm)", width=15).pack(side=tk.LEFT, padx=5)
         ttk.Label(header_frame, text="Cost (exc. VAT)", width=15).pack(side=tk.LEFT, padx=5)
         ttk.Label(header_frame, text="", width=10).pack(side=tk.LEFT)  # For remove button
+
+        # Scrollable frame for cost entries
+        cost_scroll_frame = ttk.Frame(cost_frame)
+        cost_scroll_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        # Canvas and scrollbar for cost entries
+        canvas = tk.Canvas(cost_scroll_frame, height=150)
+        scrollbar_cost = ttk.Scrollbar(cost_scroll_frame, orient="vertical", command=canvas.yview)
+        self.cost_container = ttk.Frame(canvas)
+
+        self.cost_container.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=self.cost_container, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar_cost.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar_cost.pack(side="right", fill="y")
 
         # Add cost entries
         if self.material_data and 'Cost' in self.material_data:
@@ -107,12 +123,14 @@ class MaterialDialog(BaseDialog):
             # Add one default entry
             self._add_cost_entry()
 
-        # Add button
+        # Add button - fixed at bottom of cost frame
+        add_btn_frame = ttk.Frame(cost_frame)
+        add_btn_frame.pack(fill=tk.X, pady=5)
         ttk.Button(
-            cost_frame,
+            add_btn_frame,
             text="Add Thickness",
             command=self._add_cost_entry
-        ).pack(pady=5)
+        ).pack()
 
     def _add_cost_entry(self, thickness: int = 18, cost: float = 0.0) -> None:
         """Add a cost entry row."""
@@ -246,7 +264,7 @@ class MaterialDatabaseDialog(BaseDialog):
         self.repository = repository
         self.has_changes = False
 
-        super().__init__(parent, "Material Database", width=800, height=600)
+        super().__init__(parent, "Material Database", width=800, height=700)
 
     def _create_body(self, parent: ttk.Frame) -> None:
         """Create dialog body."""
@@ -299,13 +317,41 @@ class MaterialDatabaseDialog(BaseDialog):
             row=2, column=1, padx=2
         )
 
-        # Materials table
+        # Materials table section - this will expand to fill available space
         table_frame = ttk.LabelFrame(parent, text="Materials", padding=10)
         table_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
+        # Button frame - MOVED TO TOP of materials section
+        btn_frame = ttk.Frame(table_frame)
+        btn_frame.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Button(btn_frame, text="Add Material", command=self._add_material).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(btn_frame, text="Edit Material", command=self._edit_material).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(btn_frame, text="Delete Material", command=self._delete_material).pack(
+            side=tk.LEFT, padx=2
+        )
+
+        # Separator
+        ttk.Separator(btn_frame, orient='vertical').pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        ttk.Button(btn_frame, text="Import", command=self._import_materials).pack(
+            side=tk.LEFT, padx=2
+        )
+        ttk.Button(btn_frame, text="Export", command=self._export_materials).pack(
+            side=tk.LEFT, padx=2
+        )
+
+        # Treeview frame with scrollbar
+        tree_frame = ttk.Frame(table_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
         # Create treeview
         columns = ('material', 'veneer', 'hardwood', 'carcass', 'door', 'face_frame', 'thicknesses')
-        self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
 
         # Configure columns
         self.tree.heading('material', text='Material', anchor='w')
@@ -325,33 +371,19 @@ class MaterialDatabaseDialog(BaseDialog):
         self.tree.column('face_frame', width=80)
         self.tree.column('thicknesses', width=200)
 
-        # Scrollbar
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        # Scrollbars
+        v_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        h_scrollbar = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
+        self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
 
-        # Pack
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Grid layout for tree and scrollbars
+        self.tree.grid(row=0, column=0, sticky='nsew')
+        v_scrollbar.grid(row=0, column=1, sticky='ns')
+        h_scrollbar.grid(row=1, column=0, sticky='ew')
 
-        # Button frame
-        btn_frame = ttk.Frame(table_frame)
-        btn_frame.pack(fill=tk.X, pady=5)
-
-        ttk.Button(btn_frame, text="Add Material", command=self._add_material).pack(
-            side=tk.LEFT, padx=2
-        )
-        ttk.Button(btn_frame, text="Edit Material", command=self._edit_material).pack(
-            side=tk.LEFT, padx=2
-        )
-        ttk.Button(btn_frame, text="Delete Material", command=self._delete_material).pack(
-            side=tk.LEFT, padx=2
-        )
-        ttk.Button(btn_frame, text="Import", command=self._import_materials).pack(
-            side=tk.LEFT, padx=20
-        )
-        ttk.Button(btn_frame, text="Export", command=self._export_materials).pack(
-            side=tk.LEFT, padx=2
-        )
+        # Configure grid weights
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
 
         # Load materials
         self._refresh_table()
@@ -389,6 +421,8 @@ class MaterialDatabaseDialog(BaseDialog):
         result = dialog.show()
 
         if result:
+            if 'Materials' not in self.materials_data:
+                self.materials_data['Materials'] = []
             self.materials_data['Materials'].append(result)
             self._refresh_table()
             self.has_changes = True
@@ -464,6 +498,8 @@ class MaterialDatabaseDialog(BaseDialog):
                         self.materials_data = data
                     else:
                         # Append
+                        if 'Materials' not in self.materials_data:
+                            self.materials_data['Materials'] = []
                         self.materials_data['Materials'].extend(data['Materials'])
 
                     self._refresh_table()
@@ -522,23 +558,19 @@ class MaterialDatabaseDialog(BaseDialog):
 
     def _on_ok(self) -> None:
         """Handle OK button."""
-        if self.has_changes:
-            # Update VAT and costs
-            self.materials_data['VAT'] = self.vat_var.get()
-            self.materials_data['Veneer Lacquer Cost'] = self.veneer_lacquer_var.get()
-            self.materials_data['Veneer Edging Cost'] = self.veneer_edging_var.get()
-            self.materials_data['Veneer Screw Cost'] = self.veneer_screw_var.get()
+        # Always update the values
+        self.materials_data['VAT'] = self.vat_var.get()
+        self.materials_data['Veneer Lacquer Cost'] = self.veneer_lacquer_var.get()
+        self.materials_data['Veneer Edging Cost'] = self.veneer_edging_var.get()
+        self.materials_data['Veneer Screw Cost'] = self.veneer_screw_var.get()
 
-            # Save to file
-            try:
-                self.repository.save_materials(self.materials_data)
-                self.result = True
-                self.dialog.destroy()
-            except Exception as e:
-                messagebox.showerror(
-                    "Save Error",
-                    f"Failed to save materials: {str(e)}"
-                )
-        else:
-            self.result = False
+        # Save to file
+        try:
+            self.repository.save_materials(self.materials_data)
+            self.result = True
             self.dialog.destroy()
+        except Exception as e:
+            messagebox.showerror(
+                "Save Error",
+                f"Failed to save materials: {str(e)}"
+            )
