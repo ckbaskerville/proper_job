@@ -195,7 +195,7 @@ class DrawerPanel(ttk.LabelFrame):
                         break
                 break
 
-        self.price_label.config(text=f"£{price * 2:.2f} per pair")
+        self.price_label.config(text=f"£{price:.2f} per pair")
 
     def get_drawer(self, carcass: Carcass) -> Optional[Drawer]:
         """Get drawer from panel data.

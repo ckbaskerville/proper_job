@@ -8,6 +8,7 @@ from typing import Dict, List, Any, Optional
 from src.config.constants import (
     RUNNERS_FILE,
     MATERIALS_FILE,
+    HINGES_FILE,
     LABOR_COSTS_FILE
 )
 
@@ -92,6 +93,18 @@ class DataRepository:
     def save_runners(self, data: List[Dict[str, Any]]) -> None:
         """Save runner configurations."""
         self._save_json_file(data, RUNNERS_FILE)
+
+    def load_hinges(self) -> List[Dict[str, Any]]:
+        """Load runner configurations.
+
+        Returns:
+            List of runner brand configurations
+        """
+        return self._load_json_file(HINGES_FILE)[0]
+
+    def save_hinges(self, data: List[Dict[str, Any]]) -> None:
+        """Save runner configurations."""
+        self._save_json_file(data, HINGES_FILE)
 
     def load_materials(self) -> Dict[str, Any]:
         """Load material configurations.

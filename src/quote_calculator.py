@@ -181,8 +181,7 @@ class QuoteCalculator:
                 drawer_material_cost *= 1.1  # 10% wastage
 
                 # Add runner cost
-                runner_cost = drawer.get_total_runners_price()
-                drawer_material_cost += runner_cost
+                drawer_material_cost += drawer.runner_price
 
                 # Calculate labor cost for drawer
                 drawer_material_type = self.convert_to_material_type(drawer.material)
@@ -218,6 +217,10 @@ class QuoteCalculator:
                     door_material_cost = (door_area / (self.sheet_width * self.sheet_height)) * sheet_price / \
                                          efficiency_info['efficiency']
                     door_material_cost *= 1.1  # 10% wastage
+
+                    # Hinges
+                    total_hinge_cost = unit.doors.quantity * unit.doors.hinge_price * unit.doors.hinges_per_door
+                    door_material_cost += total_hinge_cost
 
                     # Calculate labor cost for doors
                     doors_material = self.convert_to_material_type(unit.doors.material)
@@ -428,7 +431,7 @@ class QuoteCalculator:
         runner_cost = 0
         for cabinet in self.units:
             for drawer in cabinet.drawers:
-                runner_cost += drawer.get_total_runners_price() * cabinet.quantity
+                runner_cost += drawer.runner_price * cabinet.quantity
 
         total_material_cost += runner_cost
 

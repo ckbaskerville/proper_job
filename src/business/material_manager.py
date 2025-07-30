@@ -103,6 +103,13 @@ class MaterialManager:
                 return mat.get('Hardwood', False)
         return False
 
+    def sprayable(self, material: str) -> bool:
+        """Check if a material is hardwood."""
+        for mat in self.materials_data.get('Materials', []):
+            if mat['Material'] == material:
+                return mat.get('Sprayable', False)
+        return False
+
     def get_additional_costs(self) -> Dict[str, float]:
         """Get additional material costs."""
         return {
@@ -130,7 +137,5 @@ class MaterialManager:
             return "Veneer"
         elif self.is_hardwood(material):
             return "Hardwood"
-        elif material == "Sprayed MDF":
-            return "MDF"
         else:
             return material

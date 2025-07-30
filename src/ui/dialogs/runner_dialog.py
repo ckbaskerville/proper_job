@@ -67,7 +67,7 @@ class RunnerDialog(BaseDialog):
         price_frame = ttk.Frame(parent)
         price_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(price_frame, text="Price (£):", width=15).pack(side=tk.LEFT)
+        ttk.Label(price_frame, text="Price (Pair) (£):", width=15).pack(side=tk.LEFT)
         self.price_var = tk.DoubleVar(
             value=self.runner_data.get('Price', 0.0) if self.runner_data else 0.0
         )
@@ -157,7 +157,7 @@ class RunnerDatabaseDialog(BaseDialog):
         # Configure columns
         self.runner_tree.heading('length', text='Length (mm)', anchor='w')
         self.runner_tree.heading('capacity', text='Capacity (kg)', anchor='w')
-        self.runner_tree.heading('price', text='Price (£)', anchor='w')
+        self.runner_tree.heading('price', text='Price Pair (£)', anchor='w')
 
         self.runner_tree.column('length', width=100)
         self.runner_tree.column('capacity', width=100)

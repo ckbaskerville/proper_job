@@ -65,7 +65,8 @@ class LaborManager:
             material: str,
             door_type: str,
             has_moulding: bool = False,
-            has_cut_handle: bool = False
+            has_cut_handle: bool = False,
+            sprayed: bool = False
     ) -> float:
         """Get labor hours for a door.
 
@@ -79,6 +80,10 @@ class LaborManager:
             Labor hours per door
         """
         material_type = self.materials_manager.get_material_type(material)
+
+        # Sprayed MDF hack
+        if sprayed and self.materials_manager.sprayable(material):
+            material_type = f"Sprayed {material_type}"
 
         # Find matching door configuration
         for door_config in self.labor_data.get('Doors', []):

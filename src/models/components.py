@@ -358,6 +358,10 @@ class Doors(Component):
     quantity: int
     position: str
     margin: int
+    hinge_type: str
+    hinges_per_door: int
+    hinge_price: float
+    sprayed: bool
     inter_door_margin: int = 1
     hinge_bore_diameter: int = 35  # Standard euro hinge TODO check with Jack
 
@@ -455,9 +459,13 @@ class Doors(Component):
             'quantity': self.quantity,
             'position': self.position,
             'margin': self.margin,
+            'hinge_type': self.hinge_type,
+            'hinges_per_door': self.hinges_per_door,
+            'hinge_price': self.hinge_price,
             'inter_door_margin': self.inter_door_margin,
             'hinge_bore_diameter': self.hinge_bore_diameter,
-            'carcass_name': self.carcass.name
+            'carcass_name': self.carcass.name,
+            'sprayed': self.sprayed
         }
 
     @classmethod
@@ -485,6 +493,7 @@ class FaceFrame(Component):
     carcass: Carcass
     material: str
     moulding: bool
+    sprayed: bool
     thickness: int = DEFAULT_FACE_FRAME_THICKNESS
     frame_border: int = DEFAULT_FACE_FRAME_BORDER
     bottom_piece_height: int = DEFAULT_FACE_FRAME_BOTTOM_HEIGHT
@@ -563,8 +572,9 @@ class FaceFrame(Component):
         """Convert to dictionary for serialization."""
         return {
             'type': self.component_type.value,
-            'frame_type': self.material,
+            'material': self.material,
             'moulding': self.moulding,
+            'sprayed': self.sprayed,
             'thickness': self.thickness,
             'frame_border': self.frame_border,
             'bottom_piece_height': self.bottom_piece_height,

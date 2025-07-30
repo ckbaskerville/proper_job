@@ -123,6 +123,7 @@ class KitchenQuoteApp:
             self.runners_data = self.repository.load_runners()
             self.materials_data = self.repository.load_materials()
             self.labor_data = self.repository.load_labor_costs()
+            self.hinges_data = self.repository.load_hinges()
             logger.info("Resources loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load resources: {e}")
@@ -818,6 +819,7 @@ class KitchenQuoteApp:
             materials_data=self.materials_data,
             runners_data=self.runners_data,
             labor_data=self.labor_data,
+            hinges_data=self.hinges_data,
             material_manager=self.material_manager,
             default_thickness=self.settings_manager.settings.default_thickness,
             on_save=self._save_cabinet,

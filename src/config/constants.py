@@ -29,6 +29,7 @@ TEMP_DIR = BASE_DIR / "temp"
 RUNNERS_FILE = RESOURCES_DIR / "runners.json"
 MATERIALS_FILE = RESOURCES_DIR / "sheet_material.json"
 LABOR_COSTS_FILE = RESOURCES_DIR / "labour_costs.json"
+HINGES_FILE = RESOURCES_DIR / "hinges.json"
 ICON_FILE = RESOURCES_DIR / "icon.ico"
 LOGO_FILE = RESOURCES_DIR / "logo.png"
 

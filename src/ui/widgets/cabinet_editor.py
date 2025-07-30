@@ -23,6 +23,7 @@ class CabinetEditorWidget(ScrollableFrame):
         materials_data: Dict[str, Any],
         runners_data: List[Dict[str, Any]],
         labor_data: Dict[str, Any],
+        hinges_data: Dict[str, Any],
         material_manager: MaterialManager,
         default_thickness: float = 18.0,
         on_save: Optional[Callable[[Cabinet], None]] = None,
@@ -45,6 +46,7 @@ class CabinetEditorWidget(ScrollableFrame):
         self.materials_data = materials_data
         self.runners_data = runners_data
         self.labor_data = labor_data
+        self.hinges_data = hinges_data
         self.material_manager = material_manager
         self.default_thickness = default_thickness
         self.on_save = on_save
@@ -236,6 +238,31 @@ class CabinetEditorWidget(ScrollableFrame):
             width=20
         ).pack(side=tk.LEFT)
 
+        # Door Hinges
+        hinge_type_frame = ttk.Frame(self.door_options_frame)
+        hinge_type_frame.pack(fill=tk.X, pady=2)
+
+        ttk.Label(hinge_type_frame, text="Hinge Type:", width=15).pack(side=tk.LEFT)
+        hinge_types = [hinge['Name'] for hinge in self.hinges_data['Hinges']]
+        self.hinge_type_var = tk.StringVar(value=hinge_types[0])
+        ttk.Combobox(
+            hinge_type_frame,
+            textvariable=self.hinge_type_var,
+            values=hinge_types,
+            state="readonly",
+            width=20
+        ).pack(side=tk.LEFT)
+
+        hinge_number_frame = ttk.Frame(self.door_options_frame)
+        hinge_number_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(hinge_number_frame, text="Hinges per Door:", width=15).pack(side=tk.LEFT)
+        self.hinges_per_door_var = tk.IntVar(value=2)
+        ttk.Entry(
+            hinge_number_frame,
+            textvariable=self.hinges_per_door_var,
+            width=20
+        ).pack(side=tk.LEFT)
+
         # Door margin
         margin_frame = ttk.Frame(self.door_options_frame)
         margin_frame.pack(fill=tk.X, pady=2)
@@ -251,6 +278,13 @@ class CabinetEditorWidget(ScrollableFrame):
         ).pack(side=tk.LEFT)
 
         # Door options checkboxes
+        self.door_spray_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self.door_options_frame,
+            text="Sprayed",
+            variable=self.door_spray_var
+        ).pack(anchor=tk.W, pady=2)
+
         self.door_moulding_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             self.door_options_frame,
@@ -297,6 +331,13 @@ class CabinetEditorWidget(ScrollableFrame):
             self.face_frame_options,
             text="Add moulding",
             variable=self.face_frame_moulding_var
+        ).pack(anchor=tk.W, pady=2)
+
+        self.face_frame_sprayed_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self.face_frame_options,
+            text="Sprayed",
+            variable=self.face_frame_sprayed_var
         ).pack(anchor=tk.W, pady=2)
 
         # Bind type change
@@ -416,11 +457,15 @@ class CabinetEditorWidget(ScrollableFrame):
                 self.door_margin_var.set(cabinet.doors.margin)
                 self.door_moulding_var.set(cabinet.doors.moulding)
                 self.door_cut_handle_var.set(cabinet.doors.cut_handle)
+                self.hinge_type_var.set(cabinet.doors.hinge_type)
+                self.hinges_per_door_var.set(cabinet.doors.hinges_per_door)
+                self.door_spray_var.set(cabinet.doors.sprayed)
 
         # Load face frame
         if cabinet.face_frame:
             self.face_frame_type_var.set(cabinet.face_frame.material)
             self.face_frame_moulding_var.set(cabinet.face_frame.moulding)
+            self.face_frame_sprayed_var.set(cabinet.face_frame.sprayed)
 
         # Load quantity
         self.quantity_var.set(cabinet.quantity)
@@ -471,7 +516,11 @@ class CabinetEditorWidget(ScrollableFrame):
                     cut_handle=self.door_cut_handle_var.get(),
                     quantity=self.door_count_var.get(),
                     position=self.door_position_var.get(),
-                    margin=self.door_margin_var.get()
+                    margin=self.door_margin_var.get(),
+                    hinge_type=self.hinge_type_var.get(),
+                    hinges_per_door=self.hinges_per_door_var.get(),
+                    hinge_price=self._get_hinge_price(self.hinge_type_var.get()),
+                    sprayed=self.door_spray_var.get()
                 )
 
             # Create face frame
@@ -481,6 +530,7 @@ class CabinetEditorWidget(ScrollableFrame):
                     carcass=carcass,
                     material=self.face_frame_type_var.get(),
                     moulding=self.face_frame_moulding_var.get(),
+                    sprayed=self.face_frame_sprayed_var.get()
                 )
 
             # Create cabinet
@@ -505,3 +555,6 @@ class CabinetEditorWidget(ScrollableFrame):
         """Cancel editing."""
         if self.on_cancel:
             self.on_cancel()
+
+    def _get_hinge_price(self, name: str) -> float:
+        return float([hinge['Price'] for hinge in self.hinges_data['Hinges'] if hinge['Name'] == name][0])

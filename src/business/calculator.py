@@ -42,6 +42,7 @@ class QuoteResult:
     sheets_breakdown: Dict[Tuple[str, float], Dict]
     material_cost: float
     runner_cost: float
+    hinge_cost: float
     labor_hours: float
     labor_cost: float
     subtotal: float
@@ -57,6 +58,7 @@ class QuoteResult:
             'sheets_breakdown': self.sheets_breakdown,
             'material_cost': self.material_cost,
             'runner_cost': self.runner_cost,
+            'hinge_cost': self.hinge_cost,
             'labor_hours': self.labor_hours,
             'labor_cost': self.labor_cost,
             'subtotal': self.subtotal,
@@ -360,6 +362,9 @@ class QuoteCalculator:
         runner_cost = self._calculate_runner_costs()
         total_material_cost += runner_cost
 
+        hinge_cost = self._calculate_hinge_cost()
+        total_material_cost += hinge_cost
+
         # Calculate labor
         labor_hours = self._calculate_total_labor_hours()
         labor_cost = labor_hours * self.labor_manager.hourly_rate
@@ -380,7 +385,8 @@ class QuoteCalculator:
             subtotal=subtotal,
             markup=markup,
             total=total,
-            materials_used=list(material_groups.keys())
+            materials_used=list(material_groups.keys()),
+            hinge_cost=hinge_cost
         )
 
     def _empty_quote(self) -> QuoteResult:
@@ -396,7 +402,8 @@ class QuoteCalculator:
             subtotal=0.0,
             markup=0.0,
             total=0.0,
-            materials_used=[]
+            materials_used=[],
+            hinge_cost=0.0
         )
 
     def _calculate_runner_costs(self) -> float:
@@ -406,6 +413,13 @@ class QuoteCalculator:
         for unit in self.units:
             for drawer in unit.drawers:
                 total_cost += drawer.get_total_runner_cost() * unit.quantity
+
+        return total_cost
+
+    def _calculate_hinge_cost(self) -> float:
+        total_cost = 0.0
+        for unit in self.units:
+            total_cost += unit.doors.hinge_price * unit.doors.hinges_per_door * unit.quantity
 
         return total_cost
 

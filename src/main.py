@@ -123,12 +123,14 @@ def check_resources() -> bool:
     from config.constants import (
         RUNNERS_FILE,
         MATERIALS_FILE,
+        HINGES_FILE,
         LABOR_COSTS_FILE
     )
 
     required_files = [
         RUNNERS_FILE,
         MATERIALS_FILE,
+        HINGES_FILE,
         LABOR_COSTS_FILE
     ]
 

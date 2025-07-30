@@ -293,7 +293,7 @@ class UnitBreakdownDialog(BaseDialog):
                 self.detail_text.insert(tk.END, f"  Material: {component.material} {component.thickness}mm\n")
                 self.detail_text.insert(tk.END, f"  Dimensions: {component.dimensions}\n")
                 self.detail_text.insert(tk.END, f"  Parts: {component.parts_count}\n")
-                self.detail_text.insert(tk.END, f"  Total Area: {component.total_area*1e-6:,.0f} m²\n")
+                self.detail_text.insert(tk.END, f"  Total Area: {component.total_area*1e-6:,.2f} m²\n")
                 self.detail_text.insert(tk.END,
                                         f"  Material Cost: {self.currency_symbol}{component.material_cost:.2f}\n")
                 self.detail_text.insert(tk.END, f"  Labor Hours: {component.labor_hours:.2f}\n")

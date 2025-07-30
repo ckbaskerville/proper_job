@@ -9,16 +9,13 @@
         "Material": "Oak Veneer",
         "Veneer": true,
         "Hardwood": false,
+        "Sprayable": false,
         "Carcass": true,
-        "Door": false,
+        "Door": true,
         "Face Frame": false,
         "Cost": [
           {
-            "Thickness": 17,
-            "Sheet Cost (exc. VAT)": 57.95
-          },
-          {
-            "Thickness": 18,
+            "Thickness": 19,
             "Sheet Cost (exc. VAT)": 57.95
           }
         ]
@@ -27,6 +24,7 @@
         "Material": "Walnut Veneer",
         "Veneer": true,
         "Hardwood": false,
+        "Sprayable": false,
         "Carcass": true,
         "Door": false,
         "Face Frame": false,
@@ -45,6 +43,7 @@
         "Material": "Ash Veneer",
         "Veneer": true,
         "Hardwood": false,
+        "Sprayable": false,
         "Carcass": true,
         "Door": false,
         "Face Frame": false,
@@ -63,6 +62,7 @@
         "Material": "Birch Ply",
         "Veneer": false,
         "Hardwood": true,
+        "Sprayable": false,
         "Carcass": true,
         "Door": false,
         "Face Frame": false,
@@ -89,6 +89,7 @@
         "Material": "Melamine",
         "Veneer": false,
         "Hardwood": false,
+        "Sprayable": false,
         "Carcass": true,
         "Door": true,
         "Face Frame": true,
@@ -103,6 +104,7 @@
         "Material": "MDF",
         "Veneer": false,
         "Hardwood": false,
+        "Sprayable": true,
         "Carcass": true,
         "Door": true,
         "Face Frame": true,
@@ -125,6 +127,7 @@
         "Material": "Laminate",
         "Veneer": false,
         "Hardwood": false,
+        "Sprayable": false,
         "Carcass": true,
         "Door": true,
         "Face Frame": false,

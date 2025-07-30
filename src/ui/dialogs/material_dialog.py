@@ -293,7 +293,7 @@ class MaterialDatabaseDialog(BaseDialog):
         costs_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
 
         # Veneer costs
-        ttk.Label(costs_frame, text="Veneer Lacquer:").grid(row=0, column=0, sticky=tk.W, padx=2)
+        ttk.Label(costs_frame, text="Veneer Lacquer (£):").grid(row=0, column=0, sticky=tk.W, padx=2)
         self.veneer_lacquer_var = tk.DoubleVar(
             value=self.materials_data.get('Veneer Lacquer Cost', 7.5)
         )
@@ -301,7 +301,7 @@ class MaterialDatabaseDialog(BaseDialog):
             row=0, column=1, padx=2
         )
 
-        ttk.Label(costs_frame, text="Veneer Edging:").grid(row=1, column=0, sticky=tk.W, padx=2)
+        ttk.Label(costs_frame, text="Veneer Edging (£):").grid(row=1, column=0, sticky=tk.W, padx=2)
         self.veneer_edging_var = tk.DoubleVar(
             value=self.materials_data.get('Veneer Edging Cost', 4.0)
         )
@@ -309,7 +309,7 @@ class MaterialDatabaseDialog(BaseDialog):
             row=1, column=1, padx=2
         )
 
-        ttk.Label(costs_frame, text="Veneer Screw:").grid(row=2, column=0, sticky=tk.W, padx=2)
+        ttk.Label(costs_frame, text="Veneer Screw (£):").grid(row=2, column=0, sticky=tk.W, padx=2)
         self.veneer_screw_var = tk.DoubleVar(
             value=self.materials_data.get('Veneer Screw Cost', 3.0)
         )
