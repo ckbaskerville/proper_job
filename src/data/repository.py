@@ -94,17 +94,62 @@ class DataRepository:
         """Save runner configurations."""
         self._save_json_file(data, RUNNERS_FILE)
 
-    def load_hinges(self) -> List[Dict[str, Any]]:
-        """Load runner configurations.
+    def load_hinges(self) -> Dict[str, Any]:
+        """Load hinge data from file.
 
         Returns:
-            List of runner brand configurations
-        """
-        return self._load_json_file(HINGES_FILE)[0]
+            Dictionary containing hinge data
 
-    def save_hinges(self, data: List[Dict[str, Any]]) -> None:
-        """Save runner configurations."""
-        self._save_json_file(data, HINGES_FILE)
+        Raises:
+            FileNotFoundError: If hinge file doesn't exist
+            JSONDecodeError: If file contains invalid JSON
+        """
+        try:
+            with open(HINGES_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Handle both list and dict formats
+            if isinstance(data, list) and data:
+                return data[0]
+            elif isinstance(data, dict):
+                return data
+            else:
+                # Return default structure if empty
+                return {"Hinges": []}
+
+        except FileNotFoundError:
+            logger.warning(f"Hinges file not found: {HINGES_FILE}")
+            # Return default structure
+            return {"Hinges": []}
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in hinges file: {e}")
+            raise
+
+    def save_hinges(self, hinges_data: Dict[str, Any]) -> None:
+        """Save hinge data to file.
+
+        Args:
+            hinges_data: Dictionary containing hinge data
+
+        Raises:
+            OSError: If file cannot be written
+            JSONDecodeError: If data cannot be serialized
+        """
+        try:
+            # Ensure directory exists
+            Path(HINGES_FILE).parent.mkdir(parents=True, exist_ok=True)
+
+            # Save as list format to match other resource files
+            data_to_save = [hinges_data] if isinstance(hinges_data, dict) else hinges_data
+
+            with open(HINGES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Saved hinges data to {HINGES_FILE}")
+
+        except (OSError, json.JSONEncodeError) as e:
+            logger.error(f"Failed to save hinges data: {e}")
+            raise
 
     def load_materials(self) -> Dict[str, Any]:
         """Load material configurations.

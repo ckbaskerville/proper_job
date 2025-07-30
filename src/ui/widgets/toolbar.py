@@ -23,7 +23,8 @@ class ToolBar(ttk.Frame):
             on_settings: Optional[Callable[[], None]] = None,
             on_materials_settings: Optional[Callable[[], None]] = None,
             on_runners_settings: Optional[Callable[[], None]] = None,
-            on_labor_settings: Optional[Callable[[], None]] = None
+            on_labor_settings: Optional[Callable[[], None]] = None,
+            on_hinge_settings : Optional[Callable[[], None]] = None
     ):
         """Initialize toolbar.
 
@@ -49,6 +50,7 @@ class ToolBar(ttk.Frame):
         self.on_materials_settings = on_materials_settings
         self.on_runners_settings = on_runners_settings
         self.on_labor_settings = on_labor_settings
+        self.on_hinge_settings = on_hinge_settings
 
         self._create_widgets()
 
@@ -79,49 +81,6 @@ class ToolBar(ttk.Frame):
             width=8
         ).pack(side=tk.LEFT, padx=2)
 
-        # # Edit section
-        # edit_frame = ttk.Frame(self, padding=5)
-        # edit_frame.pack(side=tk.LEFT, padx=5)
-        #
-        # ttk.Button(
-        #     edit_frame,
-        #     text="Add Cabinet",
-        #     command=self.on_add_unit,
-        #     width=12
-        # ).pack(side=tk.LEFT, padx=2)
-        #
-        # ttk.Button(
-        #     edit_frame,
-        #     text="Edit",
-        #     command=self.on_edit_unit,
-        #     width=12
-        # ).pack(side=tk.LEFT, padx=2)
-        #
-        # ttk.Button(
-        #     edit_frame,
-        #     text="Duplicate",
-        #     command=self.on_duplicate_unit,
-        #     width=12
-        # ).pack(side=tk.LEFT, padx=2)
-        #
-        # ttk.Button(
-        #     edit_frame,
-        #     text="Remove",
-        #     command=self.on_remove_unit,
-        #     width=12
-        # ).pack(side=tk.LEFT, padx=2)
-
-        # # Tools section
-        # tools_frame = ttk.LabelFrame(self, text="Tools", padding=5)
-        # tools_frame.pack(side=tk.LEFT, padx=5)
-        #
-        # ttk.Button(
-        #     tools_frame,
-        #     text="Calculate Quote",
-        #     command=self.on_calculate,
-        #     width=15
-        # ).pack(side=tk.LEFT, padx=2)
-
         # Settings button (right side)
         ttk.Button(
             self,
@@ -133,6 +92,12 @@ class ToolBar(ttk.Frame):
             self,
             text="Drawer Runners",
             command=self.on_runners_settings,
+            width=15
+        ).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(
+            self,
+            text="Hinges",
+            command=self.on_hinge_settings,
             width=15
         ).pack(side=tk.RIGHT, padx=5)
         ttk.Button(

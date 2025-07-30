@@ -360,8 +360,8 @@ class Doors(Component):
     margin: int
     hinge_type: str
     hinges_per_door: int
-    hinge_price: float
     sprayed: bool
+    hinge_price: float = 0.0
     inter_door_margin: int = 1
     hinge_bore_diameter: int = 35  # Standard euro hinge TODO check with Jack
 

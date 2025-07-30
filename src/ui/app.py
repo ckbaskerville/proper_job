@@ -192,6 +192,7 @@ class KitchenQuoteApp:
             on_materials_settings=self._open_material_database,
             on_runners_settings=self._open_runner_database,
             on_labor_settings=self._open_labor_database,
+            on_hinge_settings=self._open_hinge_database
         )
         self.toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
@@ -408,6 +409,10 @@ class KitchenQuoteApp:
         tools_menu.add_command(
             label="Runner Database...",
             command=self._open_runner_database
+        )
+        tools_menu.add_command(
+            label="Hinge Database...",
+            command=self._open_hinge_database
         )
         tools_menu.add_separator()
         tools_menu.add_command(
@@ -1037,6 +1042,20 @@ class KitchenQuoteApp:
         if dialog.show():
             self._load_resources()
             self._update_status("Runner database updated", timeout=3000)
+
+    def _open_hinge_database(self) -> None:
+        """Open hinge database dialog."""
+        from .dialogs import HingeDatabaseDialog
+
+        dialog = HingeDatabaseDialog(
+            self.root,
+            self.hinges_data,
+            self.repository
+        )
+
+        if dialog.show():
+            self._load_resources()
+            self._update_status("Hinges database updated", timeout=3000)
 
     def _open_labor_database(self) -> None:
         """Open runner database dialog."""

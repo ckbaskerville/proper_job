@@ -38,6 +38,7 @@ class PathConfig:
         self.runners_file = self.resources_dir / "runners.json"
         self.materials_file = self.resources_dir / "sheet_material.json"
         self.labor_costs_file = self.resources_dir / "labour_costs.json"
+        self.hinges_file = self.resources_dir / "hinges.json"
         self.icon_file = self.resources_dir / "icon.ico"
         self.logo_file = self.resources_dir / "logo.png"
 

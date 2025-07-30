@@ -1,19 +1,18 @@
 [
   {
-  "Hinges":
-  [
-    {
-      "Name": "Standard 110 Inset",
-      "Price": 6.5
-    },
-    {
-      "Name": "Standard 110 Overlay",
-      "Price": 6.5
-    },
-    {
-      "Name": "Zero Protrusion 155",
-      "Price": 10.5
-    }
-  ]
+    "Hinges": [
+      {
+        "Name": "Standard 110 Inset",
+        "Price": 6.5
+      },
+      {
+        "Name": "Standard 110 Overlay",
+        "Price": 6.5
+      },
+      {
+        "Name": "Zero Protrusion 155",
+        "Price": 10.5
+      }
+    ]
   }
 ]
