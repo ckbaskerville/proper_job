@@ -606,3 +606,254 @@ class QuoteCalculator:
                     summary['efficiency_by_material'][key] = efficiency
 
         return summary
+
+    def calculate_unit_breakdown(self) -> List[UnitBreakdown]:
+        """Calculate detailed breakdown for each unit.
+
+        Returns:
+            List of UnitBreakdown objects with component details
+        """
+        # First optimize to get efficiency data
+        material_groups = self._group_parts_by_material()
+        optimization_results = self._optimize_material_usage(material_groups)
+
+        breakdowns = []
+
+        for unit_idx, unit in enumerate(self.units):
+            components = []
+
+            # Carcass breakdown
+            carcass_breakdown = self._calculate_carcass_breakdown(
+                unit,
+                optimization_results
+            )
+            components.append(carcass_breakdown)
+
+            # Drawer breakdowns
+            for drawer_idx, drawer in enumerate(unit.drawers):
+                drawer_breakdown = self._calculate_drawer_breakdown(
+                    unit,
+                    drawer,
+                    drawer_idx,
+                    optimization_results
+                )
+                components.append(drawer_breakdown)
+
+            # Door breakdown
+            if unit.doors and unit.doors.quantity > 0:
+                door_breakdown = self._calculate_door_breakdown(
+                    unit,
+                    optimization_results
+                )
+                if door_breakdown:
+                    components.append(door_breakdown)
+
+            # Face frame breakdown
+            if unit.face_frame and unit.face_frame.material:
+                face_frame_breakdown = self._calculate_face_frame_breakdown(
+                    unit,
+                    optimization_results
+                )
+                components.append(face_frame_breakdown)
+
+            breakdowns.append(UnitBreakdown(
+                unit_name=unit.carcass.name,
+                unit_index=unit_idx,
+                quantity=unit.quantity,
+                components=components
+            ))
+
+        return breakdowns
+
+    def _calculate_component_material_cost(
+            self,
+            component: Component,
+            material: str,
+            thickness: float,
+            optimization_results: Dict
+    ) -> float:
+        """Calculate material cost for a single component."""
+        key = (material, thickness)
+        if key not in optimization_results:
+            return 0.0
+
+        efficiency = optimization_results[key]['efficiency']
+        sheet_price = self.material_manager.get_sheet_price(material, thickness)
+        sheet_area = self.sheet_width * self.sheet_height
+        component_area = component.get_total_area()
+
+        # Cost = (component area / sheet area) * sheet price / efficiency
+        cost = (component_area / sheet_area) * sheet_price / efficiency
+        return cost * 1.1  # 10% waste factor
+
+    def _calculate_carcass_breakdown(
+            self,
+            unit: Cabinet,
+            optimization_results: Dict
+    ) -> ComponentBreakdown:
+        """Calculate breakdown for carcass component."""
+        carcass = unit.carcass
+        material_cost = self._calculate_component_material_cost(
+            carcass,
+            carcass.material,
+            carcass.material_thickness,
+            optimization_results
+        )
+
+        labor_hours = self.labor_manager.get_carcass_hours(
+            carcass.material,
+            carcass.shelves
+        )
+        labor_cost = labor_hours * self.labor_manager.hourly_rate
+
+        notes = f"Includes {carcass.shelves} shelves" if carcass.shelves > 0 else ""
+
+        return ComponentBreakdown(
+            component_name="Carcass",
+            material=carcass.material,
+            thickness=carcass.material_thickness,
+            dimensions=f"{carcass.height} × {carcass.width} × {carcass.depth}",
+            parts_count=len(carcass.get_parts()),
+            total_area=carcass.get_total_area(),
+            material_cost=material_cost,
+            labor_hours=labor_hours,
+            labor_cost=labor_cost,
+            total_cost=material_cost + labor_cost,
+            notes=notes
+        )
+
+    def _calculate_drawer_breakdown(
+            self,
+            unit: Cabinet,
+            drawer: 'Drawer',
+            drawer_idx: int,
+            optimization_results: Dict
+    ) -> ComponentBreakdown:
+        """Calculate breakdown for drawer component."""
+        material_cost = self._calculate_component_material_cost(
+            drawer,
+            drawer.material,
+            drawer.thickness,
+            optimization_results
+        )
+
+        # Add runner cost
+        runner_cost = drawer.get_total_runner_cost()
+        material_cost += runner_cost
+
+        labor_hours = self.labor_manager.get_drawer_hours(drawer.material)
+        labor_cost = labor_hours * self.labor_manager.hourly_rate
+
+        drawer_depth, drawer_width = drawer.calculate_drawer_dimensions()
+
+        notes = (
+            f"Runners: {drawer.runner_model} {drawer.runner_size}mm, "
+            f"{drawer.runner_capacity}kg (£{runner_cost:.2f})"
+        )
+
+        return ComponentBreakdown(
+            component_name=f"Drawer {drawer_idx + 1}",
+            material=drawer.material,
+            thickness=drawer.thickness,
+            dimensions=f"{drawer.height} × {drawer_width:.0f} × {drawer_depth:.0f}",
+            parts_count=len(drawer.get_parts()),
+            total_area=drawer.get_total_area(),
+            material_cost=material_cost,
+            labor_hours=labor_hours,
+            labor_cost=labor_cost,
+            total_cost=material_cost + labor_cost,
+            notes=notes
+        )
+
+    def _calculate_door_breakdown(
+            self,
+            unit: Cabinet,
+            optimization_results: Dict
+    ) -> Optional[ComponentBreakdown]:
+        """Calculate breakdown for door component."""
+        doors = unit.doors
+        door_parts = doors.get_parts()
+
+        if not door_parts:
+            return None
+
+        material_cost = self._calculate_component_material_cost(
+            doors,
+            doors.material,
+            doors.material_thickness,
+            optimization_results
+        )
+
+        door_labor_hours = self.labor_manager.get_door_hours(
+            doors.material,
+            doors.door_type,
+            doors.moulding,
+            doors.cut_handle
+        )
+        total_labor_hours = door_labor_hours * doors.quantity
+        labor_cost = total_labor_hours * self.labor_manager.hourly_rate
+
+        notes_parts = []
+        if doors.moulding:
+            notes_parts.append("with moulding")
+        if doors.cut_handle:
+            notes_parts.append("with handle cutout")
+
+        notes = f"{doors.quantity} doors"
+        if notes_parts:
+            notes += f" {', '.join(notes_parts)}"
+
+        return ComponentBreakdown(
+            component_name="Doors",
+            material=doors.material,
+            thickness=doors.material_thickness,
+            dimensions=f"{doors.door_type} style, {doors.position}",
+            parts_count=len(door_parts),
+            total_area=doors.get_total_area(),
+            material_cost=material_cost,
+            labor_hours=total_labor_hours,
+            labor_cost=labor_cost,
+            total_cost=material_cost + labor_cost,
+            notes=notes
+        )
+
+    def _calculate_face_frame_breakdown(
+            self,
+            unit: Cabinet,
+            optimization_results: Dict
+    ) -> ComponentBreakdown:
+        """Calculate breakdown for face frame component."""
+        face_frame = unit.face_frame
+
+        # Face frames typically use same material as carcass
+        material = unit.carcass.material
+        thickness = face_frame.thickness
+
+        material_cost = self._calculate_component_material_cost(
+            face_frame,
+            material,
+            thickness,
+            optimization_results
+        )
+
+        labor_hours = self.labor_manager.get_face_frame_hours(
+            face_frame.material,
+            face_frame.moulding
+        )
+        labor_cost = labor_hours * self.labor_manager.hourly_rate
+
+        notes = "with moulding" if face_frame.moulding else ""
+
+        return ComponentBreakdown(
+            component_name="Face Frame",
+            material=face_frame.material,
+            thickness=thickness,
+            dimensions=f"{unit.carcass.height} × {unit.carcass.width}",
+            parts_count=len(face_frame.get_parts()),
+            total_area=face_frame.get_total_area(),
+            material_cost=material_cost,
+            labor_hours=labor_hours,
+            labor_cost=labor_cost,
+            total_cost=material_cost + labor_cost,
+            notes=notes
+        )
