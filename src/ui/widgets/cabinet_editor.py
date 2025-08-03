@@ -24,6 +24,7 @@ class CabinetEditorWidget(ScrollableFrame):
         runners_data: List[Dict[str, Any]],
         labor_data: Dict[str, Any],
         hinges_data: Dict[str, Any],
+        dbc_drawers_data: Dict[str, Any],
         material_manager: MaterialManager,
         default_thickness: float = 18.0,
         on_save: Optional[Callable[[Cabinet], None]] = None,
@@ -47,6 +48,7 @@ class CabinetEditorWidget(ScrollableFrame):
         self.runners_data = runners_data
         self.labor_data = labor_data
         self.hinges_data = hinges_data
+        self.dbc_drawers_data = dbc_drawers_data
         self.material_manager = material_manager
         self.default_thickness = default_thickness
         self.on_save = on_save

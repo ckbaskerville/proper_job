@@ -9,7 +9,9 @@ from src.config.constants import (
     RUNNERS_FILE,
     MATERIALS_FILE,
     HINGES_FILE,
-    LABOR_COSTS_FILE
+    LABOR_COSTS_FILE,
+    DBC_DRAWERS_OAK_FILE,
+    DBC_DRAWERS_WALNUT_FILE
 )
 
 logger = logging.getLogger(__name__)
@@ -93,6 +95,28 @@ class DataRepository:
     def save_runners(self, data: List[Dict[str, Any]]) -> None:
         """Save runner configurations."""
         self._save_json_file(data, RUNNERS_FILE)
+
+
+    def load_dbc_drawers(self) -> Dict[str, Any]:
+        """Load DBC drawer configurations.
+
+        Returns:
+            Dictionary containing DBC drawer data
+        """
+        try:
+            # Load both files and merge them
+            oak_data = self._load_json_file(DBC_DRAWERS_OAK_FILE)
+            walnut_data = self._load_json_file(DBC_DRAWERS_WALNUT_FILE)
+
+            # Combine into a single dictionary
+            return {
+                "Oak": oak_data,
+                "Walnut": walnut_data
+            }
+
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.error(f"Failed to load DBC drawers: {e}")
+            raise
 
     def load_hinges(self) -> Dict[str, Any]:
         """Load hinge data from file.

@@ -30,6 +30,8 @@ RUNNERS_FILE = RESOURCES_DIR / "runners.json"
 MATERIALS_FILE = RESOURCES_DIR / "sheet_material.json"
 LABOR_COSTS_FILE = RESOURCES_DIR / "labour_costs.json"
 HINGES_FILE = RESOURCES_DIR / "hinges.json"
+DBC_DRAWERS_OAK_FILE = RESOURCES_DIR / "DBC_drawers_oak.csv"
+DBC_DRAWERS_WALNUT_FILE = RESOURCES_DIR / "DBC_drawers_walnut.csv"
 ICON_FILE = RESOURCES_DIR / "icon.ico"
 LOGO_FILE = RESOURCES_DIR / "logo.png"
 
