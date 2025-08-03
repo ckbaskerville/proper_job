@@ -1,11 +1,11 @@
-"""Cabinet component models."""
+"""Cabinet component models with grain direction support."""
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any
 from enum import Enum
 
 from .base import Component, ComponentType, ValidationError, Dimensions
-from .geometry import Rectangle
+from .geometry import Rectangle, GrainDirection
 from src.config.constants import (
     MIN_DIMENSION,
     MAX_DIMENSION,
@@ -45,6 +45,27 @@ class DoorPosition(Enum):
     INSET = "Inset"
 
 
+def get_grain_direction_for_material(material: str) -> GrainDirection:
+    """Get the appropriate grain direction constraint for a material.
+
+    Args:
+        material: Material name
+
+    Returns:
+        Grain direction constraint
+    """
+    # Materials that have grain direction requirements
+    grain_materials = {"veneer", "hardwood", "laminate", "plywood"}
+
+    material_lower = material.lower()
+    for grain_mat in grain_materials:
+        if grain_mat in material_lower:
+            return GrainDirection.WITH_WIDTH  # Default grain runs with width
+
+    # MDF, Melamine, etc. have no grain direction
+    return GrainDirection.NONE
+
+
 @dataclass
 class Carcass(Component):
     """Represents the main cabinet body structure.
@@ -57,6 +78,7 @@ class Carcass(Component):
         material: Material type
         material_thickness: Thickness of material in mm
         shelves: Number of internal shelves
+        has_back: Whether carcass has a back panel
     """
     name: str
     height: float
@@ -65,6 +87,7 @@ class Carcass(Component):
     material: str
     material_thickness: float
     shelves: int = 0
+    has_back: bool = True
 
     def __post_init__(self):
         """Validate carcass after creation."""
@@ -112,41 +135,51 @@ class Carcass(Component):
                 )
 
     def get_parts(self) -> List[Rectangle]:
-        """Generate all rectangular parts for the carcass."""
+        """Generate all rectangular parts for the carcass with grain direction."""
         parts = []
+        grain_direction = get_grain_direction_for_material(self.material)
 
-        # Back panel
-        parts.append(Rectangle(
-            width=self.width,
-            height=self.height,
-            id=f"{self.name}_back"
-        ))
+        # Back panel - height should align with sheet width (grain direction)
+        if self.has_back:
+            parts.append(Rectangle(
+                width=self.width,
+                height=self.height,
+                id=f"{self.name}_back",
+                grain_direction=GrainDirection.WITH_HEIGHT,  # Height aligns with sheet width
+                component_type="carcass_back"
+            ))
 
-        # Side panels (depth minus back thickness)
-        effective_depth = self.depth - self.material_thickness
+        # Side panels - height should align with sheet width (grain direction)
+        effective_depth = self.depth - (self.material_thickness if self.has_back else 0)
 
         for i in range(2):
             parts.append(Rectangle(
                 width=effective_depth,
                 height=self.height,
-                id=f"{self.name}_side_{i+1}"
+                id=f"{self.name}_side_{i+1}",
+                grain_direction=GrainDirection.WITH_HEIGHT,  # Height aligns with sheet width
+                component_type="carcass_side"
             ))
 
-        # Top and bottom panels
+        # Top and bottom panels - height should align with sheet height
         internal_width = self.width - 2 * self.material_thickness
         for panel_type in ["top", "bottom"]:
             parts.append(Rectangle(
                 width=internal_width,
                 height=effective_depth,
-                id=f"{self.name}_{panel_type}"
+                id=f"{self.name}_{panel_type}",
+                grain_direction=GrainDirection.WITH_WIDTH,  # Height aligns with sheet height
+                component_type=f"carcass_{panel_type}"
             ))
 
-        # Shelves
+        # Shelves - height should align with sheet height
         for i in range(self.shelves):
             parts.append(Rectangle(
                 width=internal_width,
                 height=effective_depth,
-                id=f"{self.name}_shelf_{i+1}"
+                id=f"{self.name}_shelf_{i+1}",
+                grain_direction=GrainDirection.WITH_WIDTH,  # Height aligns with sheet height
+                component_type="carcass_shelf"
             ))
 
         return parts
@@ -161,7 +194,7 @@ class Carcass(Component):
         return Dimensions(
             height=self.height - 2 * self.material_thickness,
             width=self.width - 2 * self.material_thickness,
-            depth=self.depth - self.material_thickness
+            depth=self.depth - (self.material_thickness if self.has_back else 0)
         )
 
     @property
@@ -179,7 +212,8 @@ class Carcass(Component):
             'depth': self.depth,
             'material': self.material,
             'material_thickness': self.material_thickness,
-            'shelves': self.shelves
+            'shelves': self.shelves,
+            'has_back': self.has_back
         }
 
     @classmethod
@@ -219,7 +253,7 @@ class Drawer(Component):
 
     def validate(self) -> None:
         """Validate drawer specifications."""
-        if self.height <= 0 or self.height > 500: # TODO: Check if this is a reasonable height
+        if self.height <= 0 or self.height > 500:
             raise ValidationError(
                 f"Drawer height must be between 1 and 500mm "
                 f"(got {self.height}mm)"
@@ -261,7 +295,7 @@ class Drawer(Component):
         return drawer_depth, drawer_width
 
     def get_parts(self) -> List[Rectangle]:
-        """Generate all rectangular parts for the drawer."""
+        """Generate all rectangular parts for the drawer with grain direction."""
         drawer_depth, drawer_width = self.calculate_drawer_dimensions()
 
         # Internal dimensions accounting for material thickness
@@ -269,28 +303,35 @@ class Drawer(Component):
         internal_depth = drawer_depth - 2 * self.thickness
 
         parts = []
+        grain_direction = get_grain_direction_for_material(self.material)
 
-        # Front and back panels
+        # Front and back panels - height should align with sheet width
         for panel_type in ["front", "back"]:
             parts.append(Rectangle(
                 width=internal_width,
                 height=self.height,
-                id=f"{self.carcass.name}_drawer_{self.height}_{panel_type}"
+                id=f"{self.carcass.name}_drawer_{self.height}_{panel_type}",
+                grain_direction=GrainDirection.WITH_WIDTH,  # Height aligns with sheet width
+                component_type=f"drawer_{panel_type}"
             ))
 
-        # Side panels (2 pieces)
+        # Side panels - height should align with sheet width
         for i in range(2):
             parts.append(Rectangle(
                 width=drawer_depth,
                 height=self.height,
-                id=f"{self.carcass.name}_drawer_{self.height}_side_{i+1}"
+                id=f"{self.carcass.name}_drawer_{self.height}_side_{i+1}",
+                grain_direction=GrainDirection.WITH_WIDTH,  # Height aligns with sheet width
+                component_type="drawer_side"
             ))
 
-        # Base panel (with groove allowance)
+        # Base panel - can use either direction (typically with width for efficiency)
         parts.append(Rectangle(
             width=internal_width + DRAWER_GROOVE_ALLOWANCE,
             height=internal_depth + DRAWER_GROOVE_ALLOWANCE,
-            id=f"{self.carcass.name}_drawer_{self.height}_base"
+            id=f"{self.carcass.name}_drawer_{self.height}_base",
+            grain_direction=GrainDirection.WITH_WIDTH if grain_direction != GrainDirection.NONE else GrainDirection.NONE,
+            component_type="drawer_base"
         ))
 
         return parts
@@ -363,7 +404,7 @@ class Doors(Component):
     sprayed: bool
     hinge_price: float = 0.0
     inter_door_margin: int = 1
-    hinge_bore_diameter: int = 35  # Standard euro hinge TODO check with Jack
+    hinge_bore_diameter: int = 35
 
     def __post_init__(self):
         """Validate doors after creation."""
@@ -371,9 +412,9 @@ class Doors(Component):
 
     def validate(self) -> None:
         """Validate door specifications."""
-        if not 0 <= self.quantity <= 2:
+        if not 0 <= self.quantity <= 4:  # Updated to allow up to 4 doors
             raise ValidationError(
-                f"Door quantity must be between 0 and 2 (got {self.quantity})"
+                f"Door quantity must be between 0 and 4 (got {self.quantity})"
             )
 
         if self.quantity == 0:
@@ -412,11 +453,12 @@ class Doors(Component):
             return self.carcass.width - self.margin
 
     def get_parts(self) -> List[Rectangle]:
-        """Generate all rectangular parts for doors."""
+        """Generate all rectangular parts for doors with grain direction."""
         if self.quantity == 0:
             return []
 
         parts = []
+        grain_direction = get_grain_direction_for_material(self.material)
 
         if self.position == DoorPosition.INSET.value:
             door_height = self.carcass.internal_dimensions.height - DOOR_INSET_HEIGHT_CLEARANCE
@@ -429,11 +471,17 @@ class Doors(Component):
         total_margins = (self.quantity - 1) * self.inter_door_margin
         individual_door_width = (door_width - total_margins) / self.quantity
 
+        # Doors typically have grain running vertically (with height)
+        # But for materials without grain, use NONE
+        door_grain_direction = GrainDirection.WITH_HEIGHT if grain_direction != GrainDirection.NONE else GrainDirection.NONE
+
         for i in range(self.quantity):
             parts.append(Rectangle(
                 width=individual_door_width,
                 height=door_height,
-                id=f"{self.carcass.name}_door_{i+1}"
+                id=f"{self.carcass.name}_door_{i+1}",
+                grain_direction=door_grain_direction,
+                component_type="door"
             ))
 
         return parts
@@ -524,27 +572,32 @@ class FaceFrame(Component):
             )
 
     def get_parts(self) -> List[Rectangle]:
-        """Generate all rectangular parts for the face frame."""
+        """Generate all rectangular parts for the face frame with grain direction."""
         parts = []
+        grain_direction = get_grain_direction_for_material(self.material)
 
         # Get internal carcass dimensions
         internal_dims = self.carcass.internal_dimensions
 
-        # Top rail
+        # Top rail - grain typically runs with width
         parts.append(Rectangle(
             width=internal_dims.width,
             height=self.frame_border,
-            id=f"{self.carcass.name}_face_frame_top"
+            id=f"{self.carcass.name}_face_frame_top",
+            grain_direction=GrainDirection.WITH_WIDTH if grain_direction != GrainDirection.NONE else GrainDirection.NONE,
+            component_type="face_frame_rail"
         ))
 
-        # Bottom rail (taller)
+        # Bottom rail (taller) - grain typically runs with width
         parts.append(Rectangle(
             width=internal_dims.width,
             height=self.bottom_piece_height,
-            id=f"{self.carcass.name}_face_frame_bottom"
+            id=f"{self.carcass.name}_face_frame_bottom",
+            grain_direction=GrainDirection.WITH_WIDTH if grain_direction != GrainDirection.NONE else GrainDirection.NONE,
+            component_type="face_frame_rail"
         ))
 
-        # Side stiles (2 pieces)
+        # Side stiles (2 pieces) - grain typically runs with height
         # Height includes overlap with rails
         stile_height = (internal_dims.height +
                        self.carcass.material_thickness +
@@ -554,7 +607,9 @@ class FaceFrame(Component):
             parts.append(Rectangle(
                 width=self.frame_border,
                 height=stile_height,
-                id=f"{self.carcass.name}_face_frame_side_{i+1}"
+                id=f"{self.carcass.name}_face_frame_side_{i+1}",
+                grain_direction=GrainDirection.WITH_HEIGHT if grain_direction != GrainDirection.NONE else GrainDirection.NONE,
+                component_type="face_frame_stile"
             ))
 
         return parts

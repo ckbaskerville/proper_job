@@ -1,11 +1,11 @@
-"""Main optimization module combining genetic algorithm with bin packing."""
+"""Main optimization module combining genetic algorithm with bin packing and grain direction."""
 
 import logging
 import random
 from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
 
-from src.models.geometry import Rectangle, PlacedRectangle
+from src.models.geometry import Rectangle, PlacedRectangle, GrainDirection
 from .genetic_algorithm import GeneticAlgorithm, Individual
 from .packing import BinPacker, BottomLeftFillPacker
 
@@ -14,30 +14,45 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PackingGene:
-    """Gene representation for packing problem.
+    """Gene representation for packing problem with grain awareness.
 
     Attributes:
         rectangle_index: Index of rectangle in original list
-        is_rotated: Whether rectangle is rotated
+        is_rotated: Whether rectangle is rotated (may be ignored for grain materials)
     """
     rectangle_index: int
     is_rotated: bool
 
 
 class PackingIndividual(Individual[PackingGene]):
-    """Individual for the packing problem."""
+    """Individual for the packing problem with grain direction support."""
 
-    def __init__(self, rectangles: List[Rectangle]):
+    def __init__(self, rectangles: List[Rectangle], allow_rotation: bool = True):
         """Initialize with random genes.
 
         Args:
             rectangles: List of rectangles to pack
+            allow_rotation: Whether rotation is allowed for this material
         """
-        # Create random order with random rotations
-        genes = [
-            PackingGene(i, random.choice([True, False]))
-            for i in range(len(rectangles))
-        ]
+        self.allow_rotation = allow_rotation
+
+        # Create random order with random rotations (if allowed)
+        genes = []
+        for i in range(len(rectangles)):
+            rect = rectangles[i]
+
+            # Only allow rotation if:
+            # 1. Rotation is globally allowed for this material
+            # 2. This specific rectangle allows rotation (grain constraints)
+            can_rotate = (
+                allow_rotation and
+                rect.is_rotation_allowed() and
+                rect.width != rect.height  # Don't bother with squares
+            )
+
+            is_rotated = random.choice([True, False]) if can_rotate else False
+            genes.append(PackingGene(i, is_rotated))
+
         random.shuffle(genes)
         super().__init__(genes)
 
@@ -46,16 +61,25 @@ class PackingIndividual(Individual[PackingGene]):
         self.bins_used: Optional[int] = None
 
     def mutate(self, mutation_rate: float) -> None:
-        """Mutate this individual.
+        """Mutate this individual respecting grain constraints.
 
         Args:
             mutation_rate: Probability of mutation
         """
         for i in range(len(self.genes)):
             if random.random() < mutation_rate:
+                gene = self.genes[i]
+                rect = self.rectangles[gene.rectangle_index]
+
                 if random.random() < 0.5:
-                    # Flip rotation
-                    self.genes[i].is_rotated = not self.genes[i].is_rotated
+                    # Try to flip rotation (only if allowed)
+                    can_rotate = (
+                        self.allow_rotation and
+                        rect.is_rotation_allowed() and
+                        rect.width != rect.height
+                    )
+                    if can_rotate:
+                        self.genes[i].is_rotated = not self.genes[i].is_rotated
                 else:
                     # Swap with another position
                     j = random.randint(0, len(self.genes) - 1)
@@ -71,16 +95,17 @@ class OptimizerConfig:
     """Configuration for the sheet optimizer."""
     sheet_width: float
     sheet_height: float
+    material_type: str = "MDF"
     population_size: int = 50
     generations: int = 100
     mutation_rate: float = 0.1
     tournament_size: int = 3
     elite_percentage: float = 0.1
-    allow_rotation: bool = True
+    allow_rotation: bool = True  # Will be overridden based on material type
 
 
 class SheetOptimizer(GeneticAlgorithm[PackingGene]):
-    """Genetic algorithm for optimizing sheet usage in 2D bin packing."""
+    """Genetic algorithm for optimizing sheet usage in 2D bin packing with grain direction."""
 
     def __init__(
             self,
@@ -103,15 +128,37 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         self.rectangles = rectangles
         self.config = config
 
-        # Create bin packer
+        # Determine if this material has grain constraints
+        self.material_has_grain = self._material_has_grain(config.material_type)
+
+        # Override rotation setting based on material
+        if self.material_has_grain:
+            self.config.allow_rotation = False
+            logger.info(f"Material {config.material_type} has grain - rotation disabled")
+        else:
+            logger.info(f"Material {config.material_type} has no grain - rotation enabled")
+
+        # Create bin packer with appropriate settings
         self.packer = BinPacker(
             bin_width=config.sheet_width,
             bin_height=config.sheet_height,
-            strategy=BottomLeftFillPacker(allow_rotation=config.allow_rotation)
+            material_type=config.material_type
         )
 
         # Cache for packing results
         self._packing_cache: Dict[str, Tuple[int, List[List[PlacedRectangle]]]] = {}
+
+    def _material_has_grain(self, material_type: str) -> bool:
+        """Check if a material has grain direction constraints.
+
+        Args:
+            material_type: Type of material
+
+        Returns:
+            True if material has grain constraints
+        """
+        grain_materials = {"veneer", "hardwood", "laminate", "plywood"}
+        return any(grain_mat in material_type.lower() for grain_mat in grain_materials)
 
     def create_individual(self) -> PackingIndividual:
         """Create a new random individual.
@@ -119,10 +166,10 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         Returns:
             New PackingIndividual
         """
-        return PackingIndividual(self.rectangles)
+        return PackingIndividual(self.rectangles, self.config.allow_rotation)
 
     def evaluate_fitness(self, individual: PackingIndividual) -> float:
-        """Evaluate fitness by packing rectangles.
+        """Evaluate fitness by packing rectangles with grain constraints.
 
         Args:
             individual: Individual to evaluate
@@ -134,12 +181,28 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         ordered_rects = []
         for gene in individual.genes:
             rect = self.rectangles[gene.rectangle_index]
-            if gene.is_rotated and self.config.allow_rotation:
+
+            # Apply rotation only if allowed and beneficial
+            if (gene.is_rotated and
+                self.config.allow_rotation and
+                rect.is_rotation_allowed()):
+
                 rect = rect.rotated()
+
+            # Ensure correct grain orientation
+            rect = rect.get_correct_orientation_for_grain()
             ordered_rects.append(rect)
 
         # Pack rectangles
         bins = self.packer.pack(ordered_rects)
+
+        # Validate grain compliance if material has grain
+        if self.material_has_grain:
+            is_compliant, violations = self.packer.validate_grain_compliance(bins)
+            if not is_compliant:
+                logger.warning(f"Grain violations in individual: {violations}")
+                # Penalize individuals that violate grain constraints
+                return len(bins) + 10  # Heavy penalty
 
         # Store number of bins for later use
         individual.bins_used = len(bins)
@@ -161,7 +224,7 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
             parent1: PackingIndividual,
             parent2: PackingIndividual
     ) -> Tuple[PackingIndividual, PackingIndividual]:
-        """Create offspring using order crossover (OX).
+        """Create offspring using order crossover (OX) with grain awareness.
 
         Args:
             parent1: First parent
@@ -177,8 +240,8 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         end = random.randint(start, length - 1)
 
         # Create offspring
-        child1 = PackingIndividual(self.rectangles)
-        child2 = PackingIndividual(self.rectangles)
+        child1 = PackingIndividual(self.rectangles, self.config.allow_rotation)
+        child2 = PackingIndividual(self.rectangles, self.config.allow_rotation)
 
         # Initialize genes
         child1.genes = [None] * length
@@ -225,8 +288,9 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         unused_idx = 0
         for i in range(len(child.genes)):
             if child.genes[i] is None:
-                child.genes[i] = unused_genes[unused_idx]
-                unused_idx += 1
+                if unused_idx < len(unused_genes):
+                    child.genes[i] = unused_genes[unused_idx]
+                    unused_idx += 1
 
     def mutate_individual(self, individual: PackingIndividual) -> None:
         """Mutate an individual.
@@ -254,7 +318,8 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
 
         logger.info(
             f"Starting optimization for {len(self.rectangles)} rectangles "
-            f"on {self.config.sheet_width}x{self.config.sheet_height} sheets"
+            f"on {self.config.sheet_width}x{self.config.sheet_height} sheets "
+            f"(material: {self.config.material_type}, grain constraints: {self.material_has_grain})"
         )
 
         # Run genetic algorithm
@@ -267,21 +332,37 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         ordered_rects = []
         for gene in best.genes:
             rect = self.rectangles[gene.rectangle_index]
-            if gene.is_rotated and self.config.allow_rotation:
+
+            # Apply rotation only if allowed
+            if (gene.is_rotated and
+                self.config.allow_rotation and
+                rect.is_rotation_allowed()):
                 rect = rect.rotated()
+
+            # Ensure correct grain orientation
+            rect = rect.get_correct_orientation_for_grain()
             ordered_rects.append(rect)
 
         bins = self.packer.pack(ordered_rects)
 
+        # Final validation for grain compliance
+        if self.material_has_grain:
+            is_compliant, violations = self.packer.validate_grain_compliance(bins)
+            if not is_compliant:
+                logger.error(f"Final solution has grain violations: {violations}")
+            else:
+                logger.info("Final solution respects all grain direction constraints")
+
+        efficiency = self.packer.calculate_efficiency(bins)
         logger.info(
             f"Optimization complete. Best solution uses {len(bins)} sheets "
-            f"with {self.packer.calculate_efficiency(bins):.1%} efficiency"
+            f"with {efficiency:.1%} efficiency"
         )
 
         return best, bins
 
     def create_heuristic_individual(self, strategy: str) -> PackingIndividual:
-        """Create an individual using a heuristic strategy.
+        """Create an individual using a heuristic strategy with grain awareness.
 
         Args:
             strategy: Strategy name ('area', 'height', 'width', 'perimeter')
@@ -289,7 +370,7 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         Returns:
             Individual with heuristic ordering
         """
-        individual = PackingIndividual(self.rectangles)
+        individual = PackingIndividual(self.rectangles, self.config.allow_rotation)
 
         # Sort indices by strategy
         indices = list(range(len(self.rectangles)))
@@ -321,22 +402,33 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
                 reverse=True
             )
 
-        # Set genes with optimal rotation
+        # Set genes with optimal rotation considering grain
         individual.genes = []
         for i in indices:
             rect = self.rectangles[i]
-            # Choose rotation that fits better
-            if self.config.allow_rotation:
-                is_rotated = rect.height > rect.width
-            else:
-                is_rotated = False
+
+            # Determine best rotation considering grain constraints
+            is_rotated = False
+            if (self.config.allow_rotation and
+                rect.is_rotation_allowed() and
+                rect.width != rect.height):
+
+                # For materials without grain, choose rotation that fits better
+                if not self.material_has_grain:
+                    # Simple heuristic: prefer orientation where larger dimension
+                    # aligns with larger sheet dimension
+                    if self.config.sheet_width > self.config.sheet_height:
+                        is_rotated = rect.height > rect.width
+                    else:
+                        is_rotated = rect.width > rect.height
+                # For grain materials, rotation will be determined by grain constraints
 
             individual.genes.append(PackingGene(i, is_rotated))
 
         return individual
 
     def create_initial_population(self) -> None:
-        """Create initial population with heuristic individuals."""
+        """Create initial population with heuristic individuals and grain awareness."""
         logger.info(f"Creating initial population of {self.population_size}")
 
         self.population = []
@@ -362,3 +454,21 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         logger.info(
             f"Initial population created. Best fitness: {best_fitness} bins"
         )
+
+    def get_grain_statistics(self) -> Dict[str, int]:
+        """Get statistics about grain direction requirements.
+
+        Returns:
+            Dictionary with grain direction statistics
+        """
+        stats = {
+            'none': 0,
+            'with_width': 0,
+            'with_height': 0,
+            'either': 0
+        }
+
+        for rect in self.rectangles:
+            stats[rect.grain_direction.value] += 1
+
+        return stats

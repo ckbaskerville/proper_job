@@ -1,11 +1,11 @@
-"""Bin packing algorithms for 2D rectangle packing."""
+"""Bin packing algorithms for 2D rectangle packing with grain direction support."""
 
 import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Set
 from dataclasses import dataclass
 
-from src.models.geometry import Rectangle, PlacedRectangle
+from src.models.geometry import Rectangle, PlacedRectangle, GrainDirection
 
 logger = logging.getLogger(__name__)
 
@@ -34,18 +34,25 @@ class PackingStrategy(ABC):
 
 
 class BottomLeftFillPacker(PackingStrategy):
-    """Bottom-Left Fill algorithm for 2D bin packing.
+    """Bottom-Left Fill algorithm for 2D bin packing with grain direction support.
 
-    This algorithm places each rectangle as far bottom and left as possible.
+    This algorithm places each rectangle as far bottom and left as possible,
+    while respecting grain direction constraints.
     """
 
-    def __init__(self, allow_rotation: bool = True):
+    def __init__(
+        self,
+        allow_rotation: bool = True,
+        sheet_grain_direction: GrainDirection = GrainDirection.WITH_WIDTH
+    ):
         """Initialize the packer.
 
         Args:
-            allow_rotation: Whether rectangles can be rotated
+            allow_rotation: Whether rectangles can be rotated (overridden by grain constraints)
+            sheet_grain_direction: Direction of grain on the sheet material
         """
         self.allow_rotation = allow_rotation
+        self.sheet_grain_direction = sheet_grain_direction
 
     def pack(
             self,
@@ -53,7 +60,7 @@ class BottomLeftFillPacker(PackingStrategy):
             bin_width: float,
             bin_height: float
     ) -> List[List[PlacedRectangle]]:
-        """Pack rectangles using Bottom-Left Fill algorithm.
+        """Pack rectangles using Bottom-Left Fill algorithm with grain constraints.
 
         Args:
             rectangles: List of rectangles to pack
@@ -82,6 +89,7 @@ class BottomLeftFillPacker(PackingStrategy):
                 else:
                     logger.warning(
                         f"Rectangle {rect.id} ({rect.width}x{rect.height}) "
+                        f"with grain {rect.grain_direction.value} "
                         f"cannot fit in bin ({bin_width}x{bin_height})"
                     )
 
@@ -94,7 +102,7 @@ class BottomLeftFillPacker(PackingStrategy):
             bin_width: float,
             bin_height: float
     ) -> bool:
-        """Try to place a rectangle in a bin.
+        """Try to place a rectangle in a bin respecting grain constraints.
 
         Args:
             rect: Rectangle to place
@@ -105,35 +113,46 @@ class BottomLeftFillPacker(PackingStrategy):
         Returns:
             True if rectangle was placed
         """
-        # Try normal orientation
+        # Get the correct orientation for this rectangle based on grain direction
+        oriented_rect = rect.get_correct_orientation_for_grain(self.sheet_grain_direction)
+
+        # Try the correctly oriented rectangle first
         position = self._find_bottom_left_position(
-            rect.width, rect.height, bin_items, bin_width, bin_height
+            oriented_rect.width, oriented_rect.height, bin_items, bin_width, bin_height
         )
 
         if position:
             x, y = position
             placed_rect = PlacedRectangle(
                 x=x, y=y,
-                width=rect.width,
-                height=rect.height,
-                id=rect.id
+                width=oriented_rect.width,
+                height=oriented_rect.height,
+                id=rect.id,
+                grain_direction=oriented_rect.grain_direction,
+                component_type=rect.component_type
             )
             bin_items.append(placed_rect)
             return True
 
-        # Try rotated orientation if allowed
-        if self.allow_rotation and rect.width != rect.height:
+        # Try rotation only if allowed and grain constraints permit
+        if (self.allow_rotation and
+            rect.is_rotation_allowed(self.sheet_grain_direction) and
+            rect.width != rect.height):  # Don't bother rotating squares
+
+            rotated_rect = oriented_rect.rotated()
             position = self._find_bottom_left_position(
-                rect.height, rect.width, bin_items, bin_width, bin_height
+                rotated_rect.width, rotated_rect.height, bin_items, bin_width, bin_height
             )
 
             if position:
                 x, y = position
                 placed_rect = PlacedRectangle(
                     x=x, y=y,
-                    width=rect.height,
-                    height=rect.width,
-                    id=rect.id
+                    width=rotated_rect.width,
+                    height=rotated_rect.height,
+                    id=rect.id,
+                    grain_direction=rotated_rect.grain_direction,
+                    component_type=rect.component_type
                 )
                 bin_items.append(placed_rect)
                 return True
@@ -261,13 +280,14 @@ class BottomLeftFillPacker(PackingStrategy):
 
 
 class BinPacker:
-    """High-level bin packing interface."""
+    """High-level bin packing interface with grain direction support."""
 
     def __init__(
             self,
             bin_width: float,
             bin_height: float,
-            strategy: Optional[PackingStrategy] = None
+            strategy: Optional[PackingStrategy] = None,
+            material_type: str = "MDF"
     ):
         """Initialize the bin packer.
 
@@ -275,10 +295,24 @@ class BinPacker:
             bin_width: Width of bins
             bin_height: Height of bins
             strategy: Packing strategy to use
+            material_type: Type of material to determine grain constraints
         """
         self.bin_width = bin_width
         self.bin_height = bin_height
-        self.strategy = strategy or BottomLeftFillPacker()
+        self.material_type = material_type
+
+        # Determine if this material has grain direction constraints
+        grain_materials = {"veneer", "hardwood", "laminate", "plywood"}
+        has_grain = any(grain_mat in material_type.lower() for grain_mat in grain_materials)
+
+        # Default strategy based on material
+        if strategy is None:
+            self.strategy = BottomLeftFillPacker(
+                allow_rotation=not has_grain,  # Don't allow rotation for grain materials
+                sheet_grain_direction=GrainDirection.WITH_WIDTH
+            )
+        else:
+            self.strategy = strategy
 
     def pack(
             self,
@@ -335,3 +369,44 @@ class BinPacker:
         bin_area = self.bin_width * self.bin_height
 
         return rect_area / bin_area if bin_area > 0 else 0.0
+
+    def validate_grain_compliance(
+            self,
+            bins: List[List[PlacedRectangle]]
+    ) -> Tuple[bool, List[str]]:
+        """Validate that all placed rectangles comply with grain direction requirements.
+
+        Args:
+            bins: List of bins with placed rectangles
+
+        Returns:
+            Tuple of (is_compliant, list_of_violations)
+        """
+        violations = []
+
+        for bin_idx, bin_items in enumerate(bins):
+            for rect in bin_items:
+                if rect.grain_direction == GrainDirection.NONE:
+                    continue  # No constraints
+
+                if rect.grain_direction == GrainDirection.EITHER:
+                    continue  # Any orientation OK
+
+                # Check if grain direction is respected
+                # For standard sheet orientation (grain with width):
+                if rect.grain_direction == GrainDirection.WITH_WIDTH:
+                    # Rectangle's width should be the primary grain direction
+                    if rect.width < rect.height:
+                        violations.append(
+                            f"Bin {bin_idx}: Rectangle {rect.id} violates grain direction "
+                            f"(width {rect.width} < height {rect.height} but grain should run with width)"
+                        )
+                elif rect.grain_direction == GrainDirection.WITH_HEIGHT:
+                    # Rectangle's height should be the primary grain direction
+                    if rect.height < rect.width:
+                        violations.append(
+                            f"Bin {bin_idx}: Rectangle {rect.id} violates grain direction "
+                            f"(height {rect.height} < width {rect.width} but grain should run with height)"
+                        )
+
+        return len(violations) == 0, violations

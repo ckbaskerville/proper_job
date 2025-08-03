@@ -189,7 +189,7 @@ class CabinetEditorWidget(ScrollableFrame):
         ttk.Combobox(
             doors_frame,
             textvariable=self.door_count_var,
-            values=[0, 1, 2, 3, 4],
+            values=[0, 1, 2],
             state="readonly",
             width=10
         ).pack(side=tk.LEFT)
