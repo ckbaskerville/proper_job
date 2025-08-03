@@ -193,7 +193,17 @@ class UnitTableWidget(ttk.Frame):
             # Determine type
             components = []
             if unit.drawers:
-                components.append(f"{len(unit.drawers)} drawers")
+                components.append(f"{len(unit.drawers)} custom drawers")
+            # Show DBC drawers
+            if unit.dbc_drawers:
+                dbc_materials = {}
+                for dbc in unit.dbc_drawers:
+                    if dbc.material not in dbc_materials:
+                        dbc_materials[dbc.material] = 0
+                    dbc_materials[dbc.material] += 1
+
+                dbc_str = ", ".join([f"{count} {mat}" for mat, count in dbc_materials.items()])
+                components.append(f"{len(unit.dbc_drawers)} DBC drawers ({dbc_str})")
             if unit.doors and unit.doors.quantity > 0:
                 components.append(f"{unit.doors.quantity} doors")
             if unit.face_frame:

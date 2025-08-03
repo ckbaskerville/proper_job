@@ -1,4 +1,4 @@
-"""Labor configuration dialogs."""
+"""Labor configuration dialogs - Fixed version."""
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -78,7 +78,6 @@ class LaborDialog(BaseDialog):
             text="Door Type Labor Configuration",
             font=('Arial', 11, 'bold')
         ).pack(pady=10)
-
 
         # Material
         config_frame = ttk.Frame(parent)
@@ -433,7 +432,9 @@ class LaborDatabaseDialog(BaseDialog):
         rate_frame.pack(fill=tk.X, padx=20, pady=10)
 
         ttk.Label(rate_frame, text="Hourly Rate (£):").pack(side=tk.LEFT, padx=5)
-        self.labor_rate_var = tk.DoubleVar(value=40.0)  # Default value
+        # Check if labor_rate exists in the data, if not use default
+        current_rate = self.labor_data.get('labor_rate', 40.0)
+        self.labor_rate_var = tk.DoubleVar(value=current_rate)
         ttk.Entry(rate_frame, textvariable=self.labor_rate_var, width=10).pack(side=tk.LEFT, padx=5)
 
         # Markup
@@ -441,7 +442,9 @@ class LaborDatabaseDialog(BaseDialog):
         markup_frame.pack(fill=tk.X, padx=20, pady=10)
 
         ttk.Label(markup_frame, text="Markup Percentage (%):").pack(side=tk.LEFT, padx=5)
-        self.markup_var = tk.DoubleVar(value=20.0)  # Default value
+        # Check if markup_percentage exists in the data, if not use default
+        current_markup = self.labor_data.get('markup_percentage', 20.0)
+        self.markup_var = tk.DoubleVar(value=current_markup)
         ttk.Entry(markup_frame, textvariable=self.markup_var, width=10).pack(side=tk.LEFT, padx=5)
 
         # Import/Export
@@ -539,7 +542,23 @@ class LaborDatabaseDialog(BaseDialog):
                     data = data[0]
 
                 if all(key in data for key in ['Carcass', 'Drawers', 'Doors', 'Face Frames']):
+                    # Preserve labor_rate and markup_percentage if they exist
+                    labor_rate = self.labor_data.get('labor_rate', 40.0)
+                    markup = self.labor_data.get('markup_percentage', 20.0)
+
                     self.labor_data = data
+
+                    # Restore or set labor_rate and markup
+                    if 'labor_rate' in data:
+                        self.labor_rate_var.set(data['labor_rate'])
+                    else:
+                        self.labor_data['labor_rate'] = labor_rate
+
+                    if 'markup_percentage' in data:
+                        self.markup_var.set(data['markup_percentage'])
+                    else:
+                        self.labor_data['markup_percentage'] = markup
+
                     self._refresh_all_tabs()
                     self.has_changes = True
                     messagebox.showinfo("Success", "Labor costs imported successfully")
@@ -597,6 +616,12 @@ class LaborDatabaseDialog(BaseDialog):
             vars_dict['per_frame'].set(data.get('Per Frame (hours)', 0.0))
             vars_dict['moulding'].set(data.get('Moulding', 0.0))
 
+        # Update labor rate and markup if they exist
+        if hasattr(self, 'labor_rate_var'):
+            self.labor_rate_var.set(self.labor_data.get('labor_rate', 40.0))
+        if hasattr(self, 'markup_var'):
+            self.markup_var.set(self.labor_data.get('markup_percentage', 20.0))
+
         # Refresh doors tree
         self._refresh_doors_tree()
 
@@ -617,6 +642,10 @@ class LaborDatabaseDialog(BaseDialog):
                 'Moulding': vars_dict['moulding'].get()
             }
 
+        # IMPORTANT: Save labor rate and markup to the data structure
+        self.labor_data['labor_rate'] = self.labor_rate_var.get()
+        self.labor_data['markup_percentage'] = self.markup_var.get()
+
     def _create_buttons(self, parent: ttk.Frame) -> None:
         """Create dialog buttons."""
         ttk.Button(
@@ -633,20 +662,17 @@ class LaborDatabaseDialog(BaseDialog):
 
     def _on_ok(self) -> None:
         """Handle OK button."""
-        if self.has_changes:
-            # Update data from UI
-            self._update_data_from_ui()
+        # Always update data from UI (including when has_changes is False)
+        self._update_data_from_ui()
 
-            # Save to file
-            try:
-                self.repository.save_labor_costs(self.labor_data)
-                self.result = True
-                self.dialog.destroy()
-            except Exception as e:
-                messagebox.showerror(
-                    "Save Error",
-                    f"Failed to save labor costs: {str(e)}"
-                )
-        else:
-            self.result = False
+        # Save to file
+        try:
+            # The labor_data now includes labor_rate and markup_percentage
+            self.repository.save_labor_costs(self.labor_data)
+            self.result = True
             self.dialog.destroy()
+        except Exception as e:
+            messagebox.showerror(
+                "Save Error",
+                f"Failed to save labor costs: {str(e)}"
+            )

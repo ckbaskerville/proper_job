@@ -12,6 +12,7 @@ from ..base import ScrollableFrame
 from .material_selector import MaterialSelector
 from .dimension_input import DimensionInput
 from .drawer_panel import DrawerPanel
+from .dbc_drawer_panel import DBCDrawerPanel
 
 
 class CabinetEditorWidget(ScrollableFrame):
@@ -56,6 +57,7 @@ class CabinetEditorWidget(ScrollableFrame):
 
         self._current_cabinet: Optional[Cabinet] = None
         self._drawer_panels: List[DrawerPanel] = []
+        self._dbc_drawer_panels: List[DBCDrawerPanel] = []
 
         self._create_widgets()
 
@@ -74,8 +76,11 @@ class CabinetEditorWidget(ScrollableFrame):
         # Carcass section
         self._create_carcass_section(frame)
 
-        # Drawers section
-        self._create_drawers_section(frame)
+        # Custom Drawers section
+        self._create_custom_drawers_section(frame)
+
+        # DBC Drawers section
+        self._create_dbc_drawers_section(frame)
 
         # Doors section
         self._create_doors_section(frame)
@@ -146,9 +151,9 @@ class CabinetEditorWidget(ScrollableFrame):
             width=10
         ).pack(side=tk.LEFT)
 
-    def _create_drawers_section(self, parent: ttk.Frame) -> None:
-        """Create drawers section."""
-        section = ttk.LabelFrame(parent, text="Drawers", padding=10)
+    def _create_custom_drawers_section(self, parent: ttk.Frame) -> None:
+        """Create custom drawers section (renamed from _create_drawers_section)."""
+        section = ttk.LabelFrame(parent, text="Custom Drawers", padding=10)
         section.pack(fill=tk.X, padx=10, pady=5)
 
         # Controls
@@ -157,7 +162,7 @@ class CabinetEditorWidget(ScrollableFrame):
 
         ttk.Button(
             control_frame,
-            text="Add Drawer",
+            text="Add Custom Drawer",
             command=self._add_drawer
         ).pack(side=tk.LEFT, padx=2)
 
@@ -169,13 +174,75 @@ class CabinetEditorWidget(ScrollableFrame):
 
         self.drawer_count_label = ttk.Label(
             control_frame,
-            text="0 drawers"
+            text="0 custom drawers"
         )
         self.drawer_count_label.pack(side=tk.LEFT, padx=10)
 
         # Drawer panels container
         self.drawers_container = ttk.Frame(section)
         self.drawers_container.pack(fill=tk.X, pady=5)
+
+    def _create_dbc_drawers_section(self, parent: ttk.Frame) -> None:
+        """Create DBC drawers section."""
+        section = ttk.LabelFrame(parent, text="Drawer Box Company Drawers", padding=10)
+        section.pack(fill=tk.X, padx=10, pady=5)
+
+        # Controls
+        control_frame = ttk.Frame(section)
+        control_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Button(
+            control_frame,
+            text="Add DBC Drawer",
+            command=self._add_dbc_drawer
+        ).pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(
+            control_frame,
+            text="Remove Last",
+            command=self._remove_dbc_drawer
+        ).pack(side=tk.LEFT, padx=2)
+
+        self.dbc_drawer_count_label = ttk.Label(
+            control_frame,
+            text="0 DBC drawers"
+        )
+        self.dbc_drawer_count_label.pack(side=tk.LEFT, padx=10)
+
+        # DBC drawer panels container
+        self.dbc_drawers_container = ttk.Frame(section)
+        self.dbc_drawers_container.pack(fill=tk.X, pady=5)
+
+    def _add_dbc_drawer(self) -> None:
+        """Add a new DBC drawer panel."""
+        from .dbc_drawer_panel import DBCDrawerPanel
+
+        panel = DBCDrawerPanel(
+            self.dbc_drawers_container,
+            self.dbc_drawers_data,
+            len(self._dbc_drawer_panels) + 1
+        )
+        panel.pack(fill=tk.X, pady=5)
+
+        self._dbc_drawer_panels.append(panel)
+        self._update_dbc_drawer_count()
+
+    def _remove_dbc_drawer(self) -> None:
+        """Remove the last DBC drawer panel."""
+        if self._dbc_drawer_panels:
+            panel = self._dbc_drawer_panels.pop()
+            panel.destroy()
+            self._update_dbc_drawer_count()
+
+    def _update_drawer_count(self) -> None:
+        """Update custom drawer count label."""
+        count = len(self._drawer_panels)
+        self.drawer_count_label.config(text=f"{count} custom drawers")
+
+    def _update_dbc_drawer_count(self) -> None:
+        """Update DBC drawer count label."""
+        count = len(self._dbc_drawer_panels)
+        self.dbc_drawer_count_label.config(text=f"{count} DBC drawers")
 
     def _create_doors_section(self, parent: ttk.Frame) -> None:
         """Create doors section."""
@@ -446,6 +513,12 @@ class CabinetEditorWidget(ScrollableFrame):
             panel = self._drawer_panels[-1]
             panel.load_drawer(drawer)
 
+        # Load DBC drawers
+        for dbc_drawer in cabinet.dbc_drawers:
+            self._add_dbc_drawer()
+            panel = self._dbc_drawer_panels[-1]
+            panel.load_dbc_drawer(dbc_drawer)
+
         # Load doors
         if cabinet.doors:
             self.door_count_var.set(cabinet.doors.quantity)
@@ -505,6 +578,13 @@ class CabinetEditorWidget(ScrollableFrame):
                 if drawer:
                     drawers.append(drawer)
 
+            # Create DBC drawers
+            dbc_drawers = []
+            for panel in self._dbc_drawer_panels:
+                dbc_drawer = panel.get_dbc_drawer(carcass.name)
+                if dbc_drawer:
+                    dbc_drawers.append(dbc_drawer)
+
             # Create doors
             doors = None
             if self.door_count_var.get() > 0:
@@ -539,6 +619,7 @@ class CabinetEditorWidget(ScrollableFrame):
             cabinet = Cabinet(
                 carcass=carcass,
                 drawers=drawers,
+                dbc_drawers=dbc_drawers,
                 quantity=self.quantity_var.get(),
                 doors=doors,
                 face_frame=face_frame

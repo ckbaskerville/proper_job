@@ -1,86 +1,90 @@
-{
-  "Carcass": {
-    "Veneer": 3.0,
-    "Laminate": 1.5,
-    "Melamine": 1.5,
-    "MDF": 1.0
-  },
-  "Drawers": {
-    "Veneer": 3.5,
-    "Laminate": 2.5,
-    "Melamine": 2.5,
-    "MDF": 1.5
-  },
-  "Doors": [
-    {
-      "Type": "Shaker",
-      "Material": "Sprayed MDF",
-      "Per Door (hours)": 4,
-      "Moulding": 1,
-      "Cut Handle": 0
+[
+  {
+    "Carcass": {
+      "Veneer": 3.0,
+      "Laminate": 1.5,
+      "Melamine": 1.5,
+      "MDF": 1.0
     },
-    {
-      "Type": "Flat",
-      "Material": "Sprayed MDF",
-      "Per Door (hours)": 2,
-      "Moulding": 0,
-      "Cut Handle": 1
+    "Drawers": {
+      "Veneer": 3.5,
+      "Laminate": 2.5,
+      "Melamine": 2.5,
+      "MDF": 1.5
     },
-    {
-      "Type": "Shaker",
-      "Material": "Hardwood",
-      "Per Door (hours)": 5,
-      "Moulding": 0.5,
-      "Cut Handle": 0
+    "Doors": [
+      {
+        "Type": "Shaker",
+        "Material": "Sprayed MDF",
+        "Per Door (hours)": 4,
+        "Moulding": 1,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Flat",
+        "Material": "Sprayed MDF",
+        "Per Door (hours)": 2,
+        "Moulding": 0,
+        "Cut Handle": 1
+      },
+      {
+        "Type": "Shaker",
+        "Material": "Hardwood",
+        "Per Door (hours)": 5,
+        "Moulding": 0.5,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Flat",
+        "Material": "Veneer",
+        "Per Door (hours)": 2,
+        "Moulding": 0,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Flat",
+        "Material": "Laminate",
+        "Per Door (hours)": 1,
+        "Moulding": 0,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Flat",
+        "Material": "Melamine",
+        "Per Door (hours)": 1,
+        "Moulding": 0,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Flat",
+        "Material": "MDF",
+        "Per Door (hours)": 0.5,
+        "Moulding": 0,
+        "Cut Handle": 0
+      },
+      {
+        "Type": "Shaker",
+        "Material": "MDF",
+        "Per Door (hours)": 1.5,
+        "Moulding": 0,
+        "Cut Handle": 0
+      }
+    ],
+    "Face Frames": {
+      "Sprayed": {
+        "Per Frame (hours)": 3.0,
+        "Moulding": 1.0
+      },
+      "Hardwood": {
+        "Per Frame (hours)": 4.0,
+        "Moulding": 1.0
+      },
+      "MDF": {
+        "Per Frame (hours)": 2.0,
+        "Moulding": 0.5
+      }
     },
-    {
-      "Type": "Flat",
-      "Material": "Veneer",
-      "Per Door (hours)": 2,
-      "Moulding": 0,
-      "Cut Handle": 0
-    },
-    {
-      "Type": "Flat",
-      "Material": "Laminate",
-      "Per Door (hours)": 1,
-      "Moulding": 0,
-      "Cut Handle": 0
-    },
-    {
-      "Type": "Flat",
-      "Material": "Melamine",
-      "Per Door (hours)": 1,
-      "Moulding": 0,
-      "Cut Handle": 0
-    },
-    {
-      "Type": "Flat",
-      "Material": "MDF",
-      "Per Door (hours)": 0.5,
-      "Moulding": 0,
-      "Cut Handle": 0
-    },
-    {
-      "Type": "Shaker",
-      "Material": "MDF",
-      "Per Door (hours)": 1.5,
-      "Moulding": 0,
-      "Cut Handle": 0
-    }
-  ],
-  "Face Frames": {
-    "Sprayed": {
-      "Per Frame (hours)": 3.0,
-      "Moulding": 1.0
-    },
-    "Hardwood": {
-      "Per Frame (hours)": 4.0,
-      "Moulding": 1.0
-    },
-    "MDF": {
-      "Per Frame (hours)": 2.0,
-      "Moulding": 0.5
-    }
+    "labor_rate": 30.0,
+    "markup_percentage": 15.0
   }
-}
+]

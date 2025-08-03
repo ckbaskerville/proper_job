@@ -27,6 +27,8 @@ from src.ui.dialogs.export_dialog import ExportDialog
 from src.ui.dialogs.unit_breakdown_dialog import UnitBreakdownDialog
 from src.ui.dialogs.cut_list_dialog import CutListDialog
 from src.ui.dialogs.settings_dialog import SettingsDialog
+from src.ui.dialogs.project_settings_dialog import ProjectSettingsDialog
+
 from .widgets import (
     UnitTableWidget,
     QuoteDisplayWidget,
@@ -142,14 +144,6 @@ class KitchenQuoteApp:
         # Create managers
         self.material_manager = MaterialManager(self.materials_data)
         self.labor_manager = LaborManager(self.labor_data, self.material_manager)
-
-        # Set default rates
-        self.labor_manager.set_hourly_rate(
-            self.settings_manager.settings.default_labor_rate
-        )
-        self.labor_manager.set_markup_percentage(
-            self.settings_manager.settings.default_markup
-        )
 
         # Create calculator
         self.calculator = QuoteCalculator(

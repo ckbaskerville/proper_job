@@ -1,4 +1,4 @@
-"""Project-level models for managing cabinets and settings."""
+"""Updated Cabinet model in src/models/project.py - partial update."""
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from .base import ValidationError
-from .components import Carcass, Drawer, Doors, FaceFrame
+from .components import Carcass, Drawer, Doors, FaceFrame, DBCDrawer
 from .geometry import Rectangle
 from src.config import MAX_DRAWERS
 
@@ -18,7 +18,8 @@ class Cabinet:
 
     Attributes:
         carcass: Main cabinet body
-        drawers: List of drawer components
+        drawers: List of custom drawer components
+        dbc_drawers: List of pre-made DBC drawer components
         quantity: Number of identical units
         doors: Door component (if any)
         face_frame: Face frame component (if any)
@@ -27,6 +28,7 @@ class Cabinet:
     """
     carcass: Carcass
     drawers: List[Drawer] = field(default_factory=list)
+    dbc_drawers: List[DBCDrawer] = field(default_factory=list)  # New field for DBC drawers
     quantity: int = 1
     doors: Optional[Doors] = None
     face_frame: Optional[FaceFrame] = None
@@ -45,17 +47,23 @@ class Cabinet:
         if self.quantity > 100:
             raise ValidationError("Cabinet quantity cannot exceed 100")
 
-        # Validate drawer count
-        if len(self.drawers) > MAX_DRAWERS:
+        # Validate total drawer count (custom + DBC)
+        total_drawers = len(self.drawers) + len(self.dbc_drawers)
+        if total_drawers > MAX_DRAWERS:
             raise ValidationError(
-                f"Number of drawers cannot exceed {MAX_DRAWERS}"
+                f"Total number of drawers (custom + DBC) cannot exceed {MAX_DRAWERS}"
             )
 
         # Validate drawer fit
-        if self.drawers:
-            total_drawer_height = sum(d.height for d in self.drawers)
+        if self.drawers or self.dbc_drawers:
+            # Calculate total height for custom drawers
+            custom_drawer_height = sum(d.height for d in self.drawers)
+            # Calculate total height for DBC drawers
+            dbc_drawer_height = sum(d.height for d in self.dbc_drawers)
+            total_drawer_height = custom_drawer_height + dbc_drawer_height
+
             # Add clearances between drawers (minimum 50mm)
-            total_clearance = (len(self.drawers) + 1) * 50
+            total_clearance = (total_drawers + 1) * 50
             available_height = self.carcass.internal_dimensions.height
 
             if total_drawer_height + total_clearance > available_height:
@@ -65,23 +73,25 @@ class Cabinet:
                 )
 
         # Validate door and drawer combination
-        if self.doors and self.doors.quantity > 0 and self.drawers:
+        if self.doors and self.doors.quantity > 0 and total_drawers > 0:
             # Check if doors and drawers conflict
-            if self.doors.position == "Inset" and len(self.drawers) > 2:
+            if self.doors.position == "Inset" and total_drawers > 2:
                 raise ValidationError(
                     "Inset doors limit drawer count to 2"
                 )
 
     def get_parts(self) -> List[Rectangle]:
-        """Get all parts for this cabinet."""
+        """Get all parts for this cabinet (excludes DBC drawers as they're pre-made)."""
         all_parts = []
 
         # Carcass parts
         all_parts.extend(self.carcass.get_parts())
 
-        # Drawer parts
+        # Custom drawer parts (only)
         for drawer in self.drawers:
             all_parts.extend(drawer.get_parts())
+
+        # DBC drawers don't contribute parts (they're purchased complete)
 
         # Door parts
         if self.doors:
@@ -94,8 +104,12 @@ class Cabinet:
         return all_parts
 
     def get_total_area(self) -> float:
-        """Get total material area for one unit."""
+        """Get total material area for one unit (excludes DBC drawers)."""
         return sum(part.area() for part in self.get_parts())
+
+    def get_dbc_drawer_cost(self) -> float:
+        """Get total cost of DBC drawers for one unit."""
+        return sum(drawer.price for drawer in self.dbc_drawers)
 
     def get_unit_cost_estimate(
             self,
@@ -120,8 +134,14 @@ class Cabinet:
 
         # Add hardware costs
         hardware_cost = 0
+
+        # Custom drawer runner costs
         if self.drawers:
             hardware_cost += sum(d.get_total_runner_cost() for d in self.drawers)
+
+        # DBC drawer costs
+        if self.dbc_drawers:
+            hardware_cost += self.get_dbc_drawer_cost()
 
         if self.doors and self.doors.quantity > 0:
             # Estimate hinge cost
@@ -131,6 +151,8 @@ class Cabinet:
         labor_hours = 2.0  # Base assembly time
         if self.drawers:
             labor_hours += len(self.drawers) * 0.5
+        if self.dbc_drawers:
+            labor_hours += len(self.dbc_drawers) * 0.25  # Less time for pre-made
         if self.doors:
             labor_hours += self.doors.quantity * 0.5
         if self.face_frame:
@@ -146,6 +168,8 @@ class Cabinet:
         components = []
         if self.drawers:
             components.append(f"{len(self.drawers)}D")
+        if self.dbc_drawers:
+            components.append(f"{len(self.dbc_drawers)}DBC")
         if self.doors and self.doors.quantity > 0:
             components.append(f"{self.doors.quantity}Dr")
 
@@ -166,6 +190,7 @@ class Cabinet:
         return {
             'carcass': self.carcass.to_dict(),
             'drawers': [d.to_dict() for d in self.drawers],
+            'dbc_drawers': [d.to_dict() for d in self.dbc_drawers],  # Include DBC drawers
             'quantity': self.quantity,
             'doors': self.doors.to_dict() if self.doors else None,
             'face_frame': self.face_frame.to_dict() if self.face_frame else None,
@@ -179,10 +204,16 @@ class Cabinet:
         # Recreate carcass first
         carcass = Carcass.from_dict(data['carcass'])
 
-        # Recreate drawers with carcass reference
+        # Recreate custom drawers with carcass reference
         drawers = [
             Drawer.from_dict(d, carcass)
             for d in data.get('drawers', [])
+        ]
+
+        # Recreate DBC drawers
+        dbc_drawers = [
+            DBCDrawer.from_dict(d)
+            for d in data.get('dbc_drawers', [])
         ]
 
         # Recreate doors and face frame if present
@@ -197,6 +228,7 @@ class Cabinet:
         return cls(
             carcass=carcass,
             drawers=drawers,
+            dbc_drawers=dbc_drawers,
             quantity=data.get('quantity', 1),
             doors=doors,
             face_frame=face_frame,

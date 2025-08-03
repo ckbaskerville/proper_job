@@ -213,13 +213,6 @@ COMPANY_INFO = {
     'registration': 'Company Reg No: 12345678'
 }
 
-QUOTE_TERMS = [
-    "Quote valid for 30 days",
-    "50% deposit required to commence work",
-    "Balance due on completion",
-    "All prices exclude delivery and installation"
-]
-
 # ==================== Logging ====================
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"

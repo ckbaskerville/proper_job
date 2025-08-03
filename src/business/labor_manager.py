@@ -19,8 +19,9 @@ class LaborManager:
         """
         self.labor_data = labor_data
         self.materials_manager = materials_manager
-        self.hourly_rate = 40.0  # Default hourly rate
-        self.markup_percentage = 20.0  # Default markup
+        self.hourly_rate = self.labor_data['labor_rate']
+        self.markup_percentage = self.labor_data['markup_percentage']
+        print("")
 
     def get_carcass_hours(
             self,

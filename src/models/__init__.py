@@ -5,6 +5,7 @@ from .base import Component, ComponentType, ValidationError
 from .components import (
     Carcass,
     Drawer,
+    DBCDrawer,
     Doors,
     FaceFrame,
     MaterialType,

@@ -644,3 +644,98 @@ class FaceFrame(Component):
         data.pop('carcass_name', None)
         data['carcass'] = carcass
         return cls(**data)
+
+
+@dataclass
+class DBCDrawer(Component):
+    """Represents a pre-made drawer from The Drawer Box Company.
+
+    Attributes:
+        height: Drawer height in mm
+        width: Drawer width in mm
+        depth: Drawer depth in mm
+        material: Material type (Oak or Walnut)
+        price: Price from the DBC pricing table
+        carcass_name: Name of parent carcass for reference
+    """
+    height: int
+    width: int
+    depth: int
+    material: str  # "Oak" or "Walnut"
+    price: float
+    carcass_name: str
+
+    def __post_init__(self):
+        """Validate drawer after creation."""
+        self.validate()
+
+    def validate(self) -> None:
+        """Validate DBC drawer specifications."""
+        if self.material not in ["Oak", "Walnut"]:
+            raise ValidationError(f"DBC material must be Oak or Walnut, got {self.material}")
+
+        if self.price < 0:
+            raise ValidationError("Price cannot be negative")
+
+        # Validate dimensions are in DBC catalog
+        valid_heights = [100, 150, 175, 225, 270, 300]
+        valid_widths = [252, 352, 452, 552, 652, 752, 852, 952, 1152]
+        valid_depths = [300, 450, 500, 550, 600]
+
+        if self.height not in valid_heights:
+            raise ValidationError(f"DBC drawer height {self.height} not available. Valid heights: {valid_heights}")
+
+        if self.width not in valid_widths:
+            raise ValidationError(f"DBC drawer width {self.width} not available. Valid widths: {valid_widths}")
+
+        if self.depth not in valid_depths:
+            raise ValidationError(f"DBC drawer depth {self.depth} not available. Valid depths: {valid_depths}")
+
+    def get_parts(self) -> List[Rectangle]:
+        """DBC drawers don't generate parts for cutting - they're pre-made.
+
+        Returns:
+            Empty list since these are purchased complete
+        """
+        return []
+
+    def get_total_area(self) -> float:
+        """Calculate notional area for costing purposes.
+
+        Returns:
+            Area in square millimeters (not used for cutting)
+        """
+        # Return 0 since we don't cut these ourselves
+        return 0.0
+
+    def get_total_cost(self) -> float:
+        """Get the total cost of this DBC drawer.
+
+        Returns:
+            Price of the drawer
+        """
+        return self.price
+
+    @property
+    def component_type(self) -> ComponentType:
+        """Get component type."""
+        return ComponentType.DRAWER
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            'type': 'dbc_drawer',
+            'height': self.height,
+            'width': self.width,
+            'depth': self.depth,
+            'material': self.material,
+            'price': self.price,
+            'carcass_name': self.carcass_name
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DBCDrawer':
+        """Create from dictionary."""
+        data = data.copy()
+        data.pop('type', None)
+        return cls(**data)

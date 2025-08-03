@@ -7,23 +7,24 @@ cabinets and generating quotes with optimized material usage.
 
 import sys
 import logging
+import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 # Add project root to Python path
 PROJECT_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PROJECT_ROOT))
+# sys.path.insert(0, str(PROJECT_ROOT))
 
-from config.constants import (
+from src.config.constants import (
     APP_NAME,
     APP_VERSION,
     LOG_FILE,
     LOG_FORMAT,
     LOG_LEVEL
 )
-from config.theme import ThemeManager
-from ui.app import KitchenQuoteApp
+
+from src.ui.app import KitchenQuoteApp
 
 
 def setup_logging() -> None:
@@ -120,18 +121,22 @@ def check_resources() -> bool:
     Returns:
         True if all resources are available
     """
-    from config.constants import (
+    from src.config.constants import (
         RUNNERS_FILE,
         MATERIALS_FILE,
         HINGES_FILE,
-        LABOR_COSTS_FILE
+        LABOR_COSTS_FILE,
+        DBC_DRAWERS_OAK_FILE,
+        DBC_DRAWERS_WALNUT_FILE
     )
 
     required_files = [
         RUNNERS_FILE,
         MATERIALS_FILE,
         HINGES_FILE,
-        LABOR_COSTS_FILE
+        LABOR_COSTS_FILE,
+        DBC_DRAWERS_OAK_FILE,
+        DBC_DRAWERS_WALNUT_FILE
     ]
 
     missing = []
@@ -219,8 +224,8 @@ def main() -> int:
             return 1
 
         # Check resources
-        if not check_resources():
-            return 2
+        # if not check_resources():
+        #     return 2
 
         # Destroy initial root
         initial_root.destroy()
@@ -272,7 +277,8 @@ def main() -> int:
 
     except Exception as e:
         logger = logging.getLogger(__name__)
-        logger.exception("Fatal error in main")
+        logger.exception(f"Fatal error in main {e}")
+        time.sleep(100)
 
         # Try to show error dialog
         try:
@@ -281,6 +287,7 @@ def main() -> int:
                 f"A fatal error occurred:\n\n{type(e).__name__}: {e}\n\n"
                 "The application will now exit."
             )
+            time.sleep(100)
         except:
             pass
 

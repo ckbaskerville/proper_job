@@ -7,11 +7,12 @@ from datetime import datetime
 import json
 import csv
 from pathlib import Path
+import reportlab
 
 from ..base import BaseDialog
 from src.models import Project
 from src.business.calculator import QuoteCalculator, QuoteResult
-from src.config import Settings, COMPANY_INFO, QUOTE_TERMS
+from src.config import Settings, COMPANY_INFO
 
 
 class ExportDialog(BaseDialog):
@@ -172,22 +173,6 @@ class ExportDialog(BaseDialog):
             text="Include cutting diagrams",
             variable=self.include_diagrams_var
         ).pack(anchor=tk.W, pady=2)
-
-        # Company info
-        company_frame = ttk.LabelFrame(self.options_frame, text="Company Information", padding=5)
-        company_frame.pack(fill=tk.X, pady=10)
-
-        ttk.Label(company_frame, text="Company Name:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
-        self.company_name_var = tk.StringVar(value=COMPANY_INFO['name'])
-        ttk.Entry(company_frame, textvariable=self.company_name_var, width=40).grid(row=0, column=1, padx=5, pady=2)
-
-        ttk.Label(company_frame, text="Address:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
-        self.company_address_var = tk.StringVar(value=COMPANY_INFO['address'])
-        ttk.Entry(company_frame, textvariable=self.company_address_var, width=40).grid(row=1, column=1, padx=5, pady=2)
-
-        ttk.Label(company_frame, text="Phone:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        self.company_phone_var = tk.StringVar(value=COMPANY_INFO['phone'])
-        ttk.Entry(company_frame, textvariable=self.company_phone_var, width=40).grid(row=2, column=1, padx=5, pady=2)
 
     def _create_csv_options(self) -> None:
         """Create CSV export options."""
@@ -387,14 +372,11 @@ class ExportDialog(BaseDialog):
         # For now, create a text file as placeholder
         filepath = Path(self.filename_var.get())
 
+        # TODO Use reportlab to create a proper PDF using template
+
         with open(filepath.with_suffix('.txt'), 'w', encoding='utf-8') as f:
             f.write(f"QUOTE - {self.project.name}\n")
             f.write("=" * 60 + "\n\n")
-
-            # Company info
-            f.write(f"{self.company_name_var.get()}\n")
-            f.write(f"{self.company_address_var.get()}\n")
-            f.write(f"{self.company_phone_var.get()}\n\n")
 
             # Quote summary
             if self.quote and self.include_summary_var.get():
@@ -406,12 +388,6 @@ class ExportDialog(BaseDialog):
                 f.write(f"Subtotal: {self.settings.currency_symbol}{self.quote.subtotal:.2f}\n")
                 f.write(f"Markup ({self.quote.markup}%): {self.settings.currency_symbol}{self.quote.markup:.2f}\n")
                 f.write(f"TOTAL: {self.settings.currency_symbol}{self.quote.total:.2f}\n\n")
-
-            # Terms
-            f.write("TERMS & CONDITIONS\n")
-            f.write("-" * 40 + "\n")
-            for term in QUOTE_TERMS:
-                f.write(f"• {term}\n")
 
     def _export_csv(self) -> None:
         """Export cut list as CSV."""

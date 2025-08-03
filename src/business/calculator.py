@@ -52,6 +52,7 @@ class QuoteResult:
     sheets_breakdown: Dict[Tuple[str, float], Dict]
     material_cost: float
     runner_cost: float
+    dbc_drawer_cost: float
     hinge_cost: float
     labor_hours: float
     labor_cost: float
@@ -69,6 +70,7 @@ class QuoteResult:
             'sheets_breakdown': self.sheets_breakdown,
             'material_cost': self.material_cost,
             'runner_cost': self.runner_cost,
+            'dbc_drawer_cost': self.dbc_drawer_cost,
             'hinge_cost': self.hinge_cost,
             'labor_hours': self.labor_hours,
             'labor_cost': self.labor_cost,
@@ -371,6 +373,20 @@ class QuoteCalculator:
         sheet_price = self.material_manager.get_sheet_price(material, thickness)
         return num_sheets * sheet_price * WASTE_FACTOR
 
+    def _calculate_dbc_drawer_costs(self) -> float:
+        """Calculate total cost for all DBC drawers.
+
+        Returns:
+            Total cost of DBC drawers
+        """
+        total_cost = 0.0
+
+        for unit in self.units:
+            for dbc_drawer in unit.dbc_drawers:
+                total_cost += dbc_drawer.price * unit.quantity
+
+        return total_cost
+
     def calculate_quote(self) -> QuoteResult:
         """Calculate complete quote for all units with grain compliance.
 
@@ -418,6 +434,10 @@ class QuoteCalculator:
         runner_cost = self._calculate_runner_costs()
         total_material_cost += runner_cost
 
+        # Calculate DBC drawer costs
+        dbc_drawer_cost = self._calculate_dbc_drawer_costs()
+        total_material_cost += dbc_drawer_cost
+
         hinge_cost = self._calculate_hinge_cost()
         total_material_cost += hinge_cost
 
@@ -436,6 +456,7 @@ class QuoteCalculator:
             sheets_breakdown=optimization_results,
             material_cost=total_material_cost,
             runner_cost=runner_cost,
+            dbc_drawer_cost=dbc_drawer_cost,
             labor_hours=labor_hours,
             labor_cost=labor_cost,
             subtotal=subtotal,
@@ -505,6 +526,9 @@ class QuoteCalculator:
         # Drawer labor
         for drawer in unit.drawers:
             hours += self.labor_manager.get_drawer_hours(drawer.material)
+
+        # Add DBC drawer labor if applicable
+        hours += len(unit.dbc_drawers)
 
         # Door labor
         if unit.doors and unit.doors.quantity > 0:
@@ -639,6 +663,15 @@ class QuoteCalculator:
                 )
                 components.append(drawer_breakdown)
 
+            # DBC drawer breakdowns
+            for drawer_idx, dbc_drawer in enumerate(unit.dbc_drawers):
+                dbc_drawer_breakdown = self._calculate_dbc_drawer_breakdown(
+                    unit,
+                    dbc_drawer,
+                    drawer_idx
+                )
+                components.append(dbc_drawer_breakdown)
+
             # Door breakdown
             if unit.doors and unit.doors.quantity > 0:
                 door_breakdown = self._calculate_door_breakdown(
@@ -763,6 +796,34 @@ class QuoteCalculator:
             labor_cost=labor_cost,
             total_cost=material_cost + labor_cost,
             notes=notes
+        )
+
+    def _calculate_dbc_drawer_breakdown(
+            self,
+            unit: Cabinet,
+            dbc_drawer: 'DBCDrawer',
+            drawer_idx: int
+    ) -> ComponentBreakdown:
+        """Calculate breakdown for DBC drawer component."""
+        # DBC drawers are pre-made, so no material cutting cost
+        material_cost = dbc_drawer.price
+
+        # Reduced labor for installation only
+        labor_hours = 1
+        labor_cost = labor_hours * self.labor_manager.hourly_rate
+
+
+        return ComponentBreakdown(
+            component_name=f"{dbc_drawer.material} DBC Drawer {drawer_idx + 1}",
+            material=dbc_drawer.material,
+            thickness=0,  # N/A for pre-made
+            dimensions=f"{dbc_drawer.height} × {dbc_drawer.width} × {dbc_drawer.depth}",
+            parts_count=0,  # No parts to cut
+            total_area=0,  # No cutting area
+            material_cost=material_cost,
+            labor_hours=labor_hours,
+            labor_cost=labor_cost,
+            total_cost=material_cost + labor_cost
         )
 
     def _calculate_door_breakdown(

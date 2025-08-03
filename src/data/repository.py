@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+import pandas as pd
 
 from src.config.constants import (
     RUNNERS_FILE,
@@ -96,7 +97,6 @@ class DataRepository:
         """Save runner configurations."""
         self._save_json_file(data, RUNNERS_FILE)
 
-
     def load_dbc_drawers(self) -> Dict[str, Any]:
         """Load DBC drawer configurations.
 
@@ -105,8 +105,8 @@ class DataRepository:
         """
         try:
             # Load both files and merge them
-            oak_data = self._load_json_file(DBC_DRAWERS_OAK_FILE)
-            walnut_data = self._load_json_file(DBC_DRAWERS_WALNUT_FILE)
+            oak_data = pd.read_csv(DBC_DRAWERS_OAK_FILE)
+            walnut_data = pd.read_csv(DBC_DRAWERS_WALNUT_FILE)
 
             # Combine into a single dictionary
             return {
