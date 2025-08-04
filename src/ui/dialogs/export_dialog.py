@@ -367,27 +367,141 @@ class ExportDialog(BaseDialog):
             )
 
     def _export_pdf(self) -> None:
-        """Export as PDF."""
-        # This would require a PDF library like reportlab
-        # For now, create a text file as placeholder
+        """Export as PDF using template if available, otherwise create from scratch."""
         filepath = Path(self.filename_var.get())
 
-        # TODO Use reportlab to create a proper PDF using template
+        # Try to use template first
+        template_path = Path(__file__).parent.parent.parent.parent / "src" / "resources" / "invoice_template.pdf"
 
-        with open(filepath.with_suffix('.txt'), 'w', encoding='utf-8') as f:
-            f.write(f"QUOTE - {self.project.name}\n")
-            f.write("=" * 60 + "\n\n")
+        if template_path.exists():
+            try:
+                self._export_pdf_with_template(filepath, template_path)
+                return
+            except ImportError:
+                # If PDF libraries not available, fall back to creating from scratch
+                pass
 
-            # Quote summary
+    def _export_pdf_with_template(self, filepath: Path, template_path: Path) -> None:
+        """Export PDF using template file."""
+        try:
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.units import mm
+            from reportlab.lib import colors
+            from reportlab.platypus import Table, TableStyle
+            from pypdf import PdfReader, PdfWriter
+            import io
+
+            # Get unit breakdown
+            breakdown = self.calculator.calculate_unit_breakdown()
+
+            # Create a new PDF with the data
+            packet = io.BytesIO()
+            c = canvas.Canvas(packet, pagesize=A4)
+            width, height = A4
+
+            # Company info (top of page)
+            y_position = height - 100
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(50, y_position, self.project.settings.company_name or "Kitchen Quote")
+
+            y_position -= 25
+            c.setFont("Helvetica", 10)
+            c.drawString(50, y_position, f"Project: {self.project.name}")
+            c.drawString(300, y_position, f"Date: {datetime.now().strftime('%d/%m/%Y')}")
+
+            y_position -= 15
+            c.drawString(50, y_position, f"Customer: {self.project.customer_info.get('name', 'N/A')}")
+
+            # Quote Summary
             if self.quote and self.include_summary_var.get():
-                f.write("QUOTE SUMMARY\n")
-                f.write("-" * 40 + "\n")
-                f.write(f"Units: {self.quote.units_count}\n")
-                f.write(f"Material Cost: {self.settings.currency_symbol}{self.quote.material_cost:.2f}\n")
-                f.write(f"Labor Cost: {self.settings.currency_symbol}{self.quote.labor_cost:.2f}\n")
-                f.write(f"Subtotal: {self.settings.currency_symbol}{self.quote.subtotal:.2f}\n")
-                f.write(f"Markup ({self.quote.markup}%): {self.settings.currency_symbol}{self.quote.markup:.2f}\n")
-                f.write(f"TOTAL: {self.settings.currency_symbol}{self.quote.total:.2f}\n\n")
+                y_position -= 40
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(50, y_position, "Quote Summary")
+
+                y_position -= 25
+                c.setFont("Helvetica", 11)
+
+                summary_data = [
+                    ("Total Units:", f"{self.quote.units_count}"),
+                    ("Total Sheets Required:", f"{self.quote.total_sheets}"),
+                    ("Material Cost:", f"{self.settings.currency_symbol}{self.quote.material_cost:,.2f}"),
+                    ("Labor Hours:", f"{self.quote.labor_hours:.1f}"),
+                    ("Labor Cost:", f"{self.settings.currency_symbol}{self.quote.labor_cost:,.2f}"),
+                    ("Subtotal:", f"{self.settings.currency_symbol}{self.quote.subtotal:,.2f}"),
+                    ("Markup:", f"{self.settings.currency_symbol}{self.quote.markup:,.2f}"),
+                    ("", ""),  # Empty row
+                    ("TOTAL:", f"{self.settings.currency_symbol}{self.quote.total:,.2f}")
+                ]
+
+                for label, value in summary_data:
+                    if label == "TOTAL:":
+                        c.setFont("Helvetica-Bold", 12)
+                    c.drawString(70, y_position, label)
+                    c.drawRightString(250, y_position, value)
+                    y_position -= 20
+                    if label == "TOTAL:":
+                        c.setFont("Helvetica", 11)
+
+            # Unit Breakdown by Component Type
+            if self.include_breakdown_var.get() and breakdown:
+                # Start new page if needed
+                if y_position < 200:
+                    c.showPage()
+                    y_position = height - 100
+
+                y_position -= 30
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(50, y_position, "Unit Breakdown by Component Type")
+
+                y_position -= 25
+
+                # Group components by type
+                component_totals = {}
+                for unit in breakdown:
+                    if y_position < 150:
+                        c.showPage()
+                        y_position = height - 100
+                    for component in unit.components:
+
+                        c.setFont("Helvetica", 10)
+                        c.drawString(90, y_position,
+                                     unit.unit_name)
+                        c.drawString(150, y_position, component.component_name)
+                        c.drawString(300, y_position, component.material)
+                        c.drawString(300, y_position, f"£{str(component.total_cost)}")
+                        y_position -= 25
+
+
+            # Save the new PDF
+            c.save()
+
+            # Move to the beginning of the BytesIO buffer
+            packet.seek(0)
+
+            # Read the template and overlay our content
+            template_pdf = PdfReader(str(template_path))
+            overlay_pdf = PdfReader(packet)
+            output = PdfWriter()
+
+            # Add the overlay to the first page of the template
+            if len(template_pdf.pages) > 0:
+                page = template_pdf.pages[0]
+                if len(overlay_pdf.pages) > 0:
+                    page.merge_page(overlay_pdf.pages[0])
+                output.add_page(page)
+
+                # Add any additional pages from overlay
+                for i in range(1, len(overlay_pdf.pages)):
+                    output.add_page(overlay_pdf.pages[i])
+
+            # Write to file
+            with open(filepath, "wb") as output_file:
+                output.write(output_file)
+
+        except ImportError as e:
+            # If required libraries not available, fall back
+            raise ImportError(f"PDF libraries not available: {e}")
 
     def _export_csv(self) -> None:
         """Export cut list as CSV."""

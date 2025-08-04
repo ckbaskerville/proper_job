@@ -21,7 +21,6 @@ class LaborManager:
         self.materials_manager = materials_manager
         self.hourly_rate = self.labor_data['labor_rate']
         self.markup_percentage = self.labor_data['markup_percentage']
-        print("")
 
     def get_carcass_hours(
             self,
