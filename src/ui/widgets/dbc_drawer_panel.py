@@ -5,8 +5,6 @@ from tkinter import ttk
 from typing import Optional, Dict, Any
 import csv
 from io import StringIO
-import pandas as pd
-
 
 class DBCDrawerPanel(ttk.LabelFrame):
     """Panel for selecting pre-made DBC drawers."""

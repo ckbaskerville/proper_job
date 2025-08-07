@@ -1,8 +1,11 @@
 # Core dependencies
 matplotlib
 Pillow
-pandas
+polars
 reportlab
 pytest
 numba
 pypdf
+
+# Build
+pyinstaller

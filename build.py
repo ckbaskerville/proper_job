@@ -7,7 +7,6 @@ PyInstaller.__main__.run([
     '--name=Proper Job',
     '--icon=src/resources/logo.png',
     '--add-data=src/resources;resources',
-    '--collect-all=pandas',
-    '--collect-all=numpy',
-    '--collect-all=pandas._libs.window.aggregations',
+    '--collect-all=numpy'
 ])
+

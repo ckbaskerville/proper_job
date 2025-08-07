@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-import pandas as pd
+import polars as pl
 
 from src.config.constants import (
     RUNNERS_FILE,
@@ -105,8 +105,8 @@ class DataRepository:
         """
         try:
             # Load both files and merge them
-            oak_data = pd.read_csv(DBC_DRAWERS_OAK_FILE)
-            walnut_data = pd.read_csv(DBC_DRAWERS_WALNUT_FILE)
+            oak_data = pl.read_csv(DBC_DRAWERS_OAK_FILE)
+            walnut_data = pl.read_csv(DBC_DRAWERS_WALNUT_FILE)
 
             # Combine into a single dictionary
             return {
