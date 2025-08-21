@@ -2,7 +2,16 @@
 
 import os
 from pathlib import Path
+import sys
 
+def get_exe_directory():
+    """Get the directory where the executable is located"""
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        return os.path.dirname(sys.executable)
+    else:
+        # Running as script (for development)
+        return os.path.dirname(os.path.abspath(__file__))
 
 # ==================== Application Info ====================
 APP_NAME = "Proper Job"
@@ -19,7 +28,7 @@ WINDOW_PADDING = 10
 
 # ==================== File Paths ====================
 # Base directories
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(get_exe_directory())
 RESOURCES_DIR = BASE_DIR / "resources"
 DATA_DIR = BASE_DIR / "data"
 LOGS_DIR = BASE_DIR / "logs"
