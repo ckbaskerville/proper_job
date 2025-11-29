@@ -29,7 +29,7 @@ from src.ui.dialogs.cut_list_dialog import CutListDialog
 from src.ui.dialogs.settings_dialog import SettingsDialog
 from src.ui.dialogs.project_settings_dialog import ProjectSettingsDialog
 
-from .widgets import (
+from src.ui.widgets import (
     UnitTableWidget,
     QuoteDisplayWidget,
     CabinetEditorWidget,
@@ -43,7 +43,7 @@ from .widgets import (
 #     UnitBreakdownDialog,
 #     ExportDialog
 # )
-from .visualization.sheet_visualizer import VisualizationWindow
+from src.ui.visualization.sheet_visualizer import VisualizationWindow
 
 
 logger = logging.getLogger(__name__)
@@ -597,8 +597,8 @@ class KitchenQuoteApp:
             # Update settings
             self.calculator.sheet_width = self._current_project.settings.sheet_width
             self.calculator.sheet_height = self._current_project.settings.sheet_height
-            self.labor_manager.set_hourly_rate(self._current_project.settings.labor_rate)
-            self.labor_manager.set_markup_percentage(self._current_project.settings.markup_percentage)
+            # self.labor_manager.set_hourly_rate(self._current_project.settings.labor_rate)
+            # self.labor_manager.set_markup_percentage(self._current_project.settings.markup_percentage)
 
             # Update UI
             self._hide_cabinet_editor()
@@ -1066,7 +1066,7 @@ class KitchenQuoteApp:
 
         if dialog.show():
             self._load_resources()
-            self._update_status("Runner database updated", timeout=3000)
+            self._update_status("Labour database updated", timeout=3000)
 
     def _clean_temp_files(self) -> None:
         """Clean temporary files."""

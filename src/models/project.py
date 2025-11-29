@@ -274,6 +274,7 @@ class ProjectSettings:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
+
         return {
             'sheet_width': self.sheet_width,
             'sheet_height': self.sheet_height,
