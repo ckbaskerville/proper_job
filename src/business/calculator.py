@@ -845,6 +845,10 @@ class QuoteCalculator:
             optimization_results
         )
 
+        hinges_cost = doors.hinges_per_door * doors.hinge_price
+        material_cost += hinges_cost
+
+
         door_labor_hours = self.labor_manager.get_door_hours(
             doors.material,
             doors.door_type,
@@ -855,6 +859,7 @@ class QuoteCalculator:
         labor_cost = total_labor_hours * self.labor_manager.hourly_rate
 
         notes_parts = []
+        notes_parts.append(f"Hinges: {doors.hinge_type}, Quantity: {doors.hinges_per_door}, Unit Price: {doors.hinge_price}")
         if doors.moulding:
             notes_parts.append("with moulding")
         if doors.cut_handle:
@@ -886,14 +891,13 @@ class QuoteCalculator:
         """Calculate breakdown for face frame component."""
         face_frame = unit.face_frame
 
-        # Face frames typically use same material as carcass
-        material = unit.carcass.material
-        thickness = face_frame.thickness
+        # material = unit.carcass.material
+        # thickness = face_frame.thickness
 
         material_cost = self._calculate_component_material_cost(
             face_frame,
-            material,
-            thickness,
+            face_frame.material,
+            face_frame.thickness,
             optimization_results
         )
 
@@ -908,7 +912,7 @@ class QuoteCalculator:
         return ComponentBreakdown(
             component_name="Face Frame",
             material=face_frame.material,
-            thickness=thickness,
+            thickness=face_frame.thickness,
             dimensions=f"{unit.carcass.height} × {unit.carcass.width}",
             parts_count=len(face_frame.get_parts()),
             total_area=face_frame.get_total_area(),

@@ -19,9 +19,11 @@
   "window_maximized": true,
   "window_width": 800,
   "window_height": 600,
-  "window_x": 607,
-  "window_y": -671,
+  "window_x": 628,
+  "window_y": -726,
   "recent_files": [
+    "D:\\hannah.pjb",
+    "D:\\glased cabinet.pjb",
     "D:\\din.pjb",
     "D:\\Untitled Project.pjb",
     "D:\\sprayed.pjb",
@@ -29,8 +31,7 @@
     "D:\\standard.pjb",
     "D:\\example_project.pjb",
     "D:\\debug.pjb",
-    "D:\\test_project.pjb",
-    "D:\\example.pjb"
+    "D:\\test_project.pjb"
   ],
   "max_recent_files": 10,
   "enable_optimization_cache": true,
