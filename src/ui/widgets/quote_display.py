@@ -55,13 +55,19 @@ class QuoteDisplayWidget(ttk.Frame):
         self._create_field("Markup:", 4, 0)
         self.markup_label = self._create_value("--", 4, 1)
 
+        self._create_field("Fitting:", 4, 2)
+        self.fitting_label = self._create_value("--", 4, 3)
+
+        self._create_field("Extras:", 5, 0)
+        self.extras_label = self._create_value("--", 5, 1)
+
         # Total (larger font)
         total_field = ttk.Label(
             self,
             text="TOTAL:",
             font=('Arial', 11, 'bold')
         )
-        total_field.grid(row=4, column=2, sticky="e", padx=5, pady=5)
+        total_field.grid(row=5, column=2, sticky="e", padx=5, pady=5)
 
         self.total_label = ttk.Label(
             self,
@@ -69,7 +75,7 @@ class QuoteDisplayWidget(ttk.Frame):
             font=('Arial', 11, 'bold'),
             foreground=DarkTheme.ACCENT_COLOR
         )
-        self.total_label.grid(row=4, column=3, sticky="w", padx=5, pady=5)
+        self.total_label.grid(row=5, column=3, sticky="w", padx=5, pady=5)
 
         # Configure grid weights
         for i in range(4):
@@ -141,6 +147,12 @@ class QuoteDisplayWidget(ttk.Frame):
         self.markup_label.config(
             text=f"{format_currency(quote['markup'])} ({markup_percentage:.0f}%)"
         )
+        self.fitting_label.config(
+            text=format_currency(quote.get('fitting_cost', 0.0))
+        )
+        self.extras_label.config(
+            text=format_currency(quote.get('extras_cost', 0.0))
+        )
         self.total_label.config(
             text=format_currency(quote['total'])
         )
@@ -154,4 +166,6 @@ class QuoteDisplayWidget(ttk.Frame):
         self.labor_cost_label.config(text="--")
         self.subtotal_label.config(text="--")
         self.markup_label.config(text="--")
+        self.fitting_label.config(text="--")
+        self.extras_label.config(text="--")
         self.total_label.config(text="--")

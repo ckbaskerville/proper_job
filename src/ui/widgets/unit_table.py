@@ -118,6 +118,20 @@ class UnitTableWidget(ttk.Frame):
         )
         self.edit_btn.pack(side=tk.RIGHT, padx=2)
 
+        # Fitting and Extras input fields
+        extras_frame = ttk.Frame(button_frame)
+        extras_frame.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(extras_frame, text="Fitting:").pack(side=tk.LEFT, padx=2)
+        self.fitting_var = tk.StringVar(value="0.00")
+        fitting_entry = ttk.Entry(extras_frame, textvariable=self.fitting_var, width=10)
+        fitting_entry.pack(side=tk.LEFT, padx=2)
+        
+        ttk.Label(extras_frame, text="Extras:").pack(side=tk.LEFT, padx=2)
+        self.extras_var = tk.StringVar(value="0.00")
+        extras_entry = ttk.Entry(extras_frame, textvariable=self.extras_var, width=10)
+        extras_entry.pack(side=tk.LEFT, padx=2)
+
         # Buttons
         ttk.Button(
             button_frame,
@@ -255,3 +269,25 @@ class UnitTableWidget(ttk.Frame):
                 self.tree.selection_set(items[index])
                 self.tree.focus(items[index])
                 self.tree.see(items[index])
+
+    def get_fitting_cost(self) -> float:
+        """Get the fitting cost value.
+
+        Returns:
+            Fitting cost as float, or 0.0 if invalid
+        """
+        try:
+            return float(self.fitting_var.get() or 0)
+        except (ValueError, AttributeError):
+            return 0.0
+
+    def get_extras_cost(self) -> float:
+        """Get the extras cost value.
+
+        Returns:
+            Extras cost as float, or 0.0 if invalid
+        """
+        try:
+            return float(self.extras_var.get() or 0)
+        except (ValueError, AttributeError):
+            return 0.0

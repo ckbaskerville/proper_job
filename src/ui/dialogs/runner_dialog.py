@@ -97,7 +97,8 @@ class RunnerDatabaseDialog(BaseDialog):
             self,
             parent: tk.Widget,
             runners_data: List[Dict[str, Any]],
-            repository: DataRepository
+            repository: DataRepository,
+            runners_data_ref=None
     ):
         """Initialize runner database dialog.
 
@@ -105,9 +106,11 @@ class RunnerDatabaseDialog(BaseDialog):
             parent: Parent widget
             runners_data: Current runners data
             repository: Data repository
+            runners_data_ref: Optional reference to update (list that will be updated in place)
         """
         self.runners_data = runners_data.copy()
         self.repository = repository
+        self.runners_data_ref = runners_data_ref
         self.has_changes = False
         self.current_brand_index = None
 
@@ -453,10 +456,17 @@ class RunnerDatabaseDialog(BaseDialog):
 
     def _on_ok(self) -> None:
         """Handle OK button."""
+        # Always save if there are changes, or update reference even if no changes
         if self.has_changes:
             # Save to file
             try:
                 self.repository.save_runners(self.runners_data)
+                
+                # Update reference if provided
+                if self.runners_data_ref is not None:
+                    self.runners_data_ref.clear()
+                    self.runners_data_ref.extend(self.runners_data)
+                
                 self.result = True
                 self.dialog.destroy()
             except Exception as e:
@@ -465,5 +475,9 @@ class RunnerDatabaseDialog(BaseDialog):
                     f"Failed to save runners: {str(e)}"
                 )
         else:
+            # Even if no changes, update the reference to ensure consistency
+            if self.runners_data_ref is not None:
+                self.runners_data_ref.clear()
+                self.runners_data_ref.extend(self.runners_data)
             self.result = False
             self.dialog.destroy()

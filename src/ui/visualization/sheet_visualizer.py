@@ -148,6 +148,12 @@ class VisualizationWindow:
             text="Waste: 0 mm²"
         )
         self.waste_label.pack(side=tk.LEFT, padx=10)
+        
+        self.margin_label = ttk.Label(
+            info_frame,
+            text="Margin: 0mm"
+        )
+        self.margin_label.pack(side=tk.LEFT, padx=10)
 
         # Button frame
         button_frame = ttk.Frame(self.window)
@@ -323,10 +329,11 @@ class VisualizationWindow:
         self.ax.set_xlabel('Width (mm)', fontsize=12)
         self.ax.set_ylabel('Height (mm)', fontsize=12)
 
-        # Title
+        # Title with margin info
         material, thickness = self.material_keys[self.current_material_index]
+        margin = self.calculator.cutting_margin
         self.ax.set_title(
-            f'{material} {thickness}mm - Sheet {self.current_sheet_index + 1}',
+            f'{material} {thickness}mm - Sheet {self.current_sheet_index + 1} (Margin: {margin}mm)',
             fontsize=14, fontweight='bold'
         )
 
@@ -351,6 +358,12 @@ class VisualizationWindow:
         )
         self.waste_label.config(
             text=f"Waste: {waste_area:,.0f} mm²"
+        )
+        
+        # Update margin label
+        margin = self.calculator.cutting_margin
+        self.margin_label.config(
+            text=f"Margin: {margin}mm"
         )
 
     def _export_current(self) -> None:

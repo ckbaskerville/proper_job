@@ -212,7 +212,8 @@ class LaborDatabaseDialog(BaseDialog):
             self,
             parent: tk.Widget,
             labor_data: Dict[str, Any],
-            repository: DataRepository
+            repository: DataRepository,
+            labor_manager=None
     ):
         """Initialize labor database dialog.
 
@@ -220,9 +221,11 @@ class LaborDatabaseDialog(BaseDialog):
             parent: Parent widget
             labor_data: Current labor data
             repository: Data repository
+            labor_manager: Optional LaborManager instance to update
         """
         self.labor_data = labor_data.copy()
         self.repository = repository
+        self.labor_manager = labor_manager
         self.has_changes = False
 
         super().__init__(parent, "Labour Cost Database", width=900, height=600)
@@ -669,6 +672,13 @@ class LaborDatabaseDialog(BaseDialog):
         try:
             # The labor_data now includes labor_rate and markup_percentage
             self.repository.save_labor_costs(self.labor_data)
+            
+            # Update labor_manager if provided
+            if self.labor_manager is not None:
+                self.labor_manager.labor_data = self.labor_data
+                self.labor_manager.hourly_rate = self.labor_data.get('labor_rate', 40.0)
+                self.labor_manager.markup_percentage = self.labor_data.get('markup_percentage', 20.0)
+            
             self.result = True
             self.dialog.destroy()
         except Exception as e:

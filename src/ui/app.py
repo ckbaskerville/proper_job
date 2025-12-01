@@ -7,6 +7,12 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import sys
 
+# Ensure project root is in Python path for imports
+# app.py is in src/ui/, so we need to go up two levels to get project root
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 from src.config import (
     WINDOW_TITLE,
     DEFAULT_WINDOW_SIZE,
@@ -23,7 +29,6 @@ from src.business.material_manager import MaterialManager
 from src.business.labor_manager import LaborManager
 from src.data.repository import DataRepository, ProjectRepository
 from src.models import Cabinet, Project
-from src.ui.dialogs.export_dialog import ExportDialog
 from src.ui.dialogs.unit_breakdown_dialog import UnitBreakdownDialog
 from src.ui.dialogs.cut_list_dialog import CutListDialog
 from src.ui.dialogs.settings_dialog import SettingsDialog
@@ -141,6 +146,11 @@ class KitchenQuoteApp:
 
     def _setup_business_logic(self) -> None:
         """Initialize business logic components."""
+        # Save current units if calculator exists
+        saved_units = []
+        if hasattr(self, 'calculator') and self.calculator:
+            saved_units = self.calculator.units.copy()
+        
         # Create managers
         self.material_manager = MaterialManager(self.materials_data)
         self.labor_manager = LaborManager(self.labor_data, self.material_manager)
@@ -150,8 +160,13 @@ class KitchenQuoteApp:
             material_manager=self.material_manager,
             labor_manager=self.labor_manager,
             sheet_width=self.settings_manager.settings.default_sheet_width,
-            sheet_height=self.settings_manager.settings.default_sheet_height
+            sheet_height=self.settings_manager.settings.default_sheet_height,
+            cutting_margin=self.settings_manager.settings.cutting_margin
         )
+        
+        # Restore units if they were saved
+        if saved_units:
+            self.calculator.units = saved_units
 
         # Quote result storage
         self.current_quote = None
@@ -878,8 +893,12 @@ class KitchenQuoteApp:
             self.calculator.sheet_width = self._current_project.settings.sheet_width
             self.calculator.sheet_height = self._current_project.settings.sheet_height
 
+            # Get fitting and extras costs
+            fitting_cost = self.unit_table.get_fitting_cost()
+            extras_cost = self.unit_table.get_extras_cost()
+            
             # Calculate quote
-            self.current_quote = self.calculator.calculate_quote()
+            self.current_quote = self.calculator.calculate_quote(fitting_cost, extras_cost)
 
             # Display quote
             self.quote_display.display_quote(
@@ -949,7 +968,7 @@ class KitchenQuoteApp:
         )
 
     def _export_quote(self) -> None:
-        """Export quote."""
+        """Export customer quote to Excel."""
         if not self.current_quote:
             messagebox.showinfo(
                 "No Quote",
@@ -957,16 +976,21 @@ class KitchenQuoteApp:
             )
             return
 
-        dialog = ExportDialog(
-            self.root,
-            self._current_project,
-            self.current_quote,
+        from src.ui.dialogs.customer_quote_export import CustomerQuoteExporter
+        # Use fitting and extras from quote result if available, otherwise from text boxes
+        if self.current_quote:
+            fitting_cost = self.current_quote.fitting_cost
+            extras_cost = self.current_quote.extras_cost
+        else:
+            fitting_cost = self.unit_table.get_fitting_cost()
+            extras_cost = self.unit_table.get_extras_cost()
+        exporter = CustomerQuoteExporter(
             self.calculator,
-            self.settings_manager.settings
+            self._current_project,
+            fitting_cost,
+            extras_cost
         )
-
-        if dialog.export():
-            self._update_status("Quote exported successfully", timeout=3000)
+        exporter.export_customer_quote()
 
     # Settings and tools methods
     def _open_settings(self) -> None:
@@ -1018,10 +1042,18 @@ class KitchenQuoteApp:
         dialog = MaterialDatabaseDialog(
             self.root,
             self.materials_data,
-            self.repository
+            self.repository,
+            material_manager=self.material_manager
         )
 
         if dialog.show():
+            # Update materials_data reference
+            self.materials_data = dialog.materials_data
+            # Material manager is updated in dialog._on_ok()
+            # Update calculator's material_manager reference
+            if hasattr(self, 'calculator') and self.calculator:
+                self.calculator.material_manager = self.material_manager
+            # Reload resources to ensure consistency
             self._load_resources()
             self._setup_business_logic()
             self._update_status("Material database updated", timeout=3000)
@@ -1033,10 +1065,13 @@ class KitchenQuoteApp:
         dialog = RunnerDatabaseDialog(
             self.root,
             self.runners_data,
-            self.repository
+            self.repository,
+            runners_data_ref=self.runners_data
         )
 
         if dialog.show():
+            # Runners data is updated in dialog._on_ok() via reference
+            # Reload resources to ensure file consistency
             self._load_resources()
             self._update_status("Runner database updated", timeout=3000)
 
@@ -1055,17 +1090,26 @@ class KitchenQuoteApp:
             self._update_status("Hinges database updated", timeout=3000)
 
     def _open_labor_database(self) -> None:
-        """Open runner database dialog."""
+        """Open labor database dialog."""
         from .dialogs import LaborDatabaseDialog
 
         dialog = LaborDatabaseDialog(
             self.root,
             self.labor_data,
-            self.repository
+            self.repository,
+            labor_manager=self.labor_manager
         )
 
         if dialog.show():
+            # Update labor_data reference
+            self.labor_data = dialog.labor_data
+            # Labor manager is updated in dialog._on_ok()
+            # Update calculator's labor_manager reference
+            if hasattr(self, 'calculator') and self.calculator:
+                self.calculator.labor_manager = self.labor_manager
+            # Reload resources and setup business logic to ensure consistency
             self._load_resources()
+            self._setup_business_logic()
             self._update_status("Labour database updated", timeout=3000)
 
     def _clean_temp_files(self) -> None:

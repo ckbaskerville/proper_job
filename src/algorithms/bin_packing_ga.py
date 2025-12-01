@@ -27,7 +27,8 @@ class BinPackingGA:
             sheet_width: float,
             sheet_height: float,
             population_size: int = 50,
-            mutation_rate: float = 0.1
+            mutation_rate: float = 0.1,
+            cutting_margin: float = 3.0
     ):
         """Initialize the bin packing genetic algorithm.
 
@@ -36,17 +37,20 @@ class BinPackingGA:
             sheet_height: Height of sheets in mm
             population_size: Size of population for GA
             mutation_rate: Mutation probability
+            cutting_margin: Margin between rectangles in mm
         """
         self.sheet_width = sheet_width
         self.sheet_height = sheet_height
         self.population_size = population_size
         self.mutation_rate = mutation_rate
+        self.cutting_margin = cutting_margin
 
         # Create packer for direct use
         self.packer = BinPacker(
             bin_width=sheet_width,
             bin_height=sheet_height,
-            strategy=BottomLeftFillPacker(allow_rotation=True)
+            strategy=BottomLeftFillPacker(allow_rotation=True, cutting_margin=cutting_margin),
+            cutting_margin=cutting_margin
         )
 
         # Storage for last optimization
@@ -214,7 +218,8 @@ class BinPackingGA:
             sheet_width=self.sheet_width,
             sheet_height=self.sheet_height,
             population_size=self.population_size,
-            mutation_rate=self.mutation_rate
+            mutation_rate=self.mutation_rate,
+            cutting_margin=self.cutting_margin
         )
 
         # Create temporary optimizer
@@ -358,7 +363,8 @@ class BinPackingGA:
             sheet_height=self.sheet_height,
             population_size=self.population_size,
             mutation_rate=self.mutation_rate,
-            generations=generations
+            generations=generations,
+            cutting_margin=self.cutting_margin
         )
 
         self.last_optimizer = SheetOptimizer(rectangles, config)

@@ -72,13 +72,6 @@ class Cabinet:
                     f"clearances exceeds available space ({available_height}mm)"
                 )
 
-        # Validate door and drawer combination
-        if self.doors and self.doors.quantity > 0 and total_drawers > 0:
-            # Check if doors and drawers conflict
-            if self.doors.position == "Inset" and total_drawers > 2:
-                raise ValidationError(
-                    "Inset doors limit drawer count to 2"
-                )
 
     def get_parts(self) -> List[Rectangle]:
         """Get all parts for this cabinet (excludes DBC drawers as they're pre-made)."""

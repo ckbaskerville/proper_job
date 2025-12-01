@@ -58,9 +58,11 @@ class QuoteResult:
     labor_cost: float
     subtotal: float
     markup: float
-    total: float
-    materials_used: List[Tuple[str, float]]
-    grain_compliance: Dict[Tuple[str, float], bool] = None
+    fitting_cost: float = 0.0
+    extras_cost: float = 0.0
+    total: float = 0.0
+    materials_used: Optional[List[Tuple[str, float]]] = None
+    grain_compliance: Optional[Dict[Tuple[str, float], bool]] = None
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for serialization."""
@@ -76,6 +78,8 @@ class QuoteResult:
             'labor_cost': self.labor_cost,
             'subtotal': self.subtotal,
             'markup': self.markup,
+            'fitting_cost': self.fitting_cost,
+            'extras_cost': self.extras_cost,
             'total': self.total,
             'materials_used': self.materials_used
         }
@@ -145,7 +149,8 @@ class QuoteCalculator:
             material_manager: MaterialManager,
             labor_manager: LaborManager,
             sheet_width: float = 2440,
-            sheet_height: float = 1220
+            sheet_height: float = 1220,
+            cutting_margin: float = 3.0
     ):
         """Initialize the quote calculator.
 
@@ -154,11 +159,13 @@ class QuoteCalculator:
             labor_manager: Manager for labor costs
             sheet_width: Standard sheet width in mm
             sheet_height: Standard sheet height in mm
+            cutting_margin: Margin between rectangles in mm
         """
         self.material_manager = material_manager
         self.labor_manager = labor_manager
         self.sheet_width = sheet_width
         self.sheet_height = sheet_height
+        self.cutting_margin = cutting_margin
         self.units: List[Cabinet] = []
 
         # Caches for optimization results
@@ -298,7 +305,8 @@ class QuoteCalculator:
                 sheet_width=self.sheet_width,
                 sheet_height=self.sheet_height,
                 material_type=material,
-                allow_rotation=not group.has_grain  # Disable rotation for grain materials
+                allow_rotation=not group.has_grain,  # Disable rotation for grain materials
+                cutting_margin=self.cutting_margin
             )
 
             # Create or get cached optimizer
@@ -387,7 +395,7 @@ class QuoteCalculator:
 
         return total_cost
 
-    def calculate_quote(self) -> QuoteResult:
+    def calculate_quote(self, fitting_cost: float = 0.0, extras_cost: float = 0.0) -> QuoteResult:
         """Calculate complete quote for all units with grain compliance.
 
         Returns:
@@ -448,7 +456,8 @@ class QuoteCalculator:
         # Calculate totals
         subtotal = total_material_cost + labor_cost
         markup = subtotal * (self.labor_manager.markup_percentage / 100)
-        total = subtotal + markup
+        # Total includes subtotal, markup, fitting, and extras
+        total = subtotal + markup + fitting_cost + extras_cost
 
         return QuoteResult(
             units_count=len(self.units),
@@ -461,6 +470,8 @@ class QuoteCalculator:
             labor_cost=labor_cost,
             subtotal=subtotal,
             markup=markup,
+            fitting_cost=fitting_cost,
+            extras_cost=extras_cost,
             total=total,
             materials_used=list(material_groups.keys()),
             hinge_cost=hinge_cost,
@@ -475,13 +486,16 @@ class QuoteCalculator:
             sheets_breakdown={},
             material_cost=0.0,
             runner_cost=0.0,
+            dbc_drawer_cost=0.0,
+            hinge_cost=0.0,
             labor_hours=0.0,
             labor_cost=0.0,
             subtotal=0.0,
             markup=0.0,
+            fitting_cost=0.0,
+            extras_cost=0.0,
             total=0.0,
             materials_used=[],
-            hinge_cost=0.0,
             grain_compliance={}
         )
 
@@ -545,6 +559,7 @@ class QuoteCalculator:
         if unit.face_frame and unit.face_frame.material:
             hours += self.labor_manager.get_face_frame_hours(
                 unit.face_frame.material,
+                unit.face_frame.sprayed,
                 unit.face_frame.moulding
             )
 
@@ -903,11 +918,14 @@ class QuoteCalculator:
 
         labor_hours = self.labor_manager.get_face_frame_hours(
             face_frame.material,
+            face_frame.sprayed,
             face_frame.moulding
         )
         labor_cost = labor_hours * self.labor_manager.hourly_rate
 
-        notes = "with moulding" if face_frame.moulding else ""
+        notes = "- Moulding" if face_frame.moulding else ""
+        if face_frame.sprayed:
+            notes += " - Sprayed"
 
         return ComponentBreakdown(
             component_name="Face Frame",

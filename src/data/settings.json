@@ -12,6 +12,7 @@
   "default_markup": 20.0,
   "default_material": "Laminate",
   "default_thickness": 18.0,
+  "cutting_margin": 3.0,
   "autosave_enabled": true,
   "autosave_interval": 300,
   "confirm_delete": true,
