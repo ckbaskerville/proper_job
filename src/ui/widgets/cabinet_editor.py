@@ -61,6 +61,9 @@ class CabinetEditorWidget(ScrollableFrame):
 
         self._create_widgets()
 
+        if hasattr(self, 'canvas'):
+            self.canvas.configure(width=500)
+
     def _create_widgets(self) -> None:
         """Create editor widgets."""
         frame = self.get_frame()
