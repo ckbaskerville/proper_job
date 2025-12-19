@@ -13,8 +13,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 # Add project root to Python path
-PROJECT_ROOT = Path(__file__).parent
-# sys.path.insert(0, str(PROJECT_ROOT))
+# main.py is in src/, so parent.parent gets us to project root
+PROJECT_ROOT = Path(__file__).parent.parent  # Go up from src/ to project root
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# SRC_ROOT is the src/ directory for path references
+SRC_ROOT = Path(__file__).parent
 
 from src.config.constants import (
     APP_NAME,
@@ -29,7 +34,7 @@ from src.ui.app import KitchenQuoteApp
 
 def setup_logging() -> None:
     """Configure application logging."""
-    log_dir = PROJECT_ROOT / "logs"
+    log_dir = SRC_ROOT / "logs"
     log_dir.mkdir(exist_ok=True)
 
     # Configure logging
@@ -176,7 +181,7 @@ def create_application() -> tk.Tk:
     root.title(f"{APP_NAME} v{APP_VERSION}")
 
     # Set window icon (if available)
-    icon_path = PROJECT_ROOT / "resources" / "icon.ico"
+    icon_path = SRC_ROOT / "resources" / "icon.ico"
     if icon_path.exists():
         try:
             root.iconbitmap(str(icon_path))

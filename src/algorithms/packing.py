@@ -43,16 +43,19 @@ class BottomLeftFillPacker(PackingStrategy):
     def __init__(
         self,
         allow_rotation: bool = True,
-        sheet_grain_direction: GrainDirection = GrainDirection.WITH_WIDTH
+        sheet_grain_direction: GrainDirection = GrainDirection.WITH_WIDTH,
+        cutting_margin: float = 3.0
     ):
         """Initialize the packer.
 
         Args:
             allow_rotation: Whether rectangles can be rotated (overridden by grain constraints)
             sheet_grain_direction: Direction of grain on the sheet material
+            cutting_margin: Margin between rectangles in mm
         """
         self.allow_rotation = allow_rotation
         self.sheet_grain_direction = sheet_grain_direction
+        self.cutting_margin = cutting_margin
 
     def pack(
             self,
@@ -260,21 +263,72 @@ class BottomLeftFillPacker(PackingStrategy):
         Returns:
             True if rectangle can be placed
         """
-        # Check bin boundaries
+        # Check bin boundaries (no margin needed at edges)
         if x + width > bin_width or y + height > bin_height:
             return False
 
-        # Check overlaps with existing rectangles
-        test_rect = PlacedRectangle(
-            x=x, y=y,
-            width=width,
-            height=height,
-            id="test"
-        )
-
+        margin = self.cutting_margin
+        
+        # Check overlaps with existing rectangles (with margin between rectangles only)
+        # Margin is only needed between rectangles, not at sheet edges
         for rect in placed:
-            if test_rect.overlaps(rect):
+            # Calculate actual positions and sizes
+            test_left = x
+            test_bottom = y
+            test_right = x + width
+            test_top = y + height
+            
+            rect_left = rect.x
+            rect_bottom = rect.y
+            rect_right = rect.x + rect.width
+            rect_top = rect.y + rect.height
+            
+            # Check if rectangles overlap (without margin) - if they do, placement is invalid
+            if not (test_right <= rect_left or rect_right <= test_left or
+                    test_top <= rect_bottom or rect_top <= test_bottom):
+                # They overlap - invalid placement
                 return False
+            
+            # Calculate horizontal gap (0 if they overlap horizontally)
+            if test_right <= rect_left:
+                # Test is to the left of placed rect
+                h_gap = rect_left - test_right
+            elif test_left >= rect_right:
+                # Test is to the right of placed rect
+                h_gap = test_left - rect_right
+            else:
+                # They overlap horizontally
+                h_gap = 0
+            
+            # Calculate vertical gap (0 if they overlap vertically)
+            if test_top <= rect_bottom:
+                # Test is below placed rect
+                v_gap = rect_bottom - test_top
+            elif test_bottom >= rect_top:
+                # Test is above placed rect
+                v_gap = test_bottom - rect_top
+            else:
+                # They overlap vertically
+                v_gap = 0
+            
+            # For axis-aligned rectangles, if they don't overlap, at least one gap is > 0
+            # The minimum distance is the non-zero gap (or 0 if they overlap)
+            # We need at least 'margin' distance between rectangles
+            if h_gap > 0 and v_gap > 0:
+                # Diagonally separated - need margin in at least one direction
+                # Actually, for cutting, we need margin in the direction of separation
+                # If separated diagonally, we need margin in both directions
+                if h_gap < margin or v_gap < margin:
+                    return False
+            elif h_gap > 0:
+                # Horizontally separated - need at least margin horizontal gap
+                if h_gap < margin:
+                    return False
+            elif v_gap > 0:
+                # Vertically separated - need at least margin vertical gap
+                if v_gap < margin:
+                    return False
+            # If both gaps are 0, they overlap (already checked above)
 
         return True
 
@@ -287,7 +341,8 @@ class BinPacker:
             bin_width: float,
             bin_height: float,
             strategy: Optional[PackingStrategy] = None,
-            material_type: str = "MDF"
+            material_type: str = "MDF",
+            cutting_margin: float = 3.0
     ):
         """Initialize the bin packer.
 
@@ -296,10 +351,12 @@ class BinPacker:
             bin_height: Height of bins
             strategy: Packing strategy to use
             material_type: Type of material to determine grain constraints
+            cutting_margin: Margin between rectangles in mm
         """
         self.bin_width = bin_width
         self.bin_height = bin_height
         self.material_type = material_type
+        self.cutting_margin = cutting_margin
 
         # Determine if this material has grain direction constraints
         grain_materials = {"veneer", "hardwood", "laminate", "plywood"}
@@ -309,10 +366,14 @@ class BinPacker:
         if strategy is None:
             self.strategy = BottomLeftFillPacker(
                 allow_rotation=not has_grain,  # Don't allow rotation for grain materials
-                sheet_grain_direction=GrainDirection.WITH_WIDTH
+                sheet_grain_direction=GrainDirection.WITH_WIDTH,
+                cutting_margin=cutting_margin
             )
         else:
             self.strategy = strategy
+            # Update strategy margin if it supports it
+            if hasattr(self.strategy, 'cutting_margin'):
+                self.strategy.cutting_margin = cutting_margin
 
     def pack(
             self,

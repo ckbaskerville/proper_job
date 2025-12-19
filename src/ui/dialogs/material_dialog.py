@@ -251,7 +251,8 @@ class MaterialDatabaseDialog(BaseDialog):
             self,
             parent: tk.Widget,
             materials_data: Dict[str, Any],
-            repository: DataRepository
+            repository: DataRepository,
+            material_manager=None
     ):
         """Initialize material database dialog.
 
@@ -259,9 +260,11 @@ class MaterialDatabaseDialog(BaseDialog):
             parent: Parent widget
             materials_data: Current materials data
             repository: Data repository
+            material_manager: Optional MaterialManager instance to update
         """
         self.materials_data = materials_data.copy()
         self.repository = repository
+        self.material_manager = material_manager
         self.has_changes = False
 
         super().__init__(parent, "Material Database", width=800, height=700)
@@ -567,6 +570,12 @@ class MaterialDatabaseDialog(BaseDialog):
         # Save to file
         try:
             self.repository.save_materials(self.materials_data)
+            
+            # Update material_manager if provided
+            if self.material_manager is not None:
+                self.material_manager.materials_data = self.materials_data
+                self.material_manager._build_caches()
+            
             self.result = True
             self.dialog.destroy()
         except Exception as e:

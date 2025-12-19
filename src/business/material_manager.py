@@ -196,7 +196,7 @@ class MaterialManager:
             )
         }
 
-    def get_material_type(self, material: str) -> str:
+    def get_material_type(self, material: str, sprayed: bool = False) -> str:
         """Get the type of material (Veneer, Hardwood, etc.).
 
         Args:
@@ -210,6 +210,8 @@ class MaterialManager:
         elif self.is_hardwood(material):
             return "Hardwood"
         else:
+            if sprayed:
+                return "Sprayed"
             return material
 
     def get_optimization_config(self, material: str) -> Dict[str, Any]:

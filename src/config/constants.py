@@ -14,7 +14,7 @@ def get_exe_directory():
         return full_exe_path
     else:
         # Running as script (for development)
-        return os.path.dirname(os.path.abspath(__file__))
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ==================== Application Info ====================
 APP_NAME = "Proper Job"

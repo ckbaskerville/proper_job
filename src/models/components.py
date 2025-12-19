@@ -88,6 +88,7 @@ class Carcass(Component):
     material_thickness: float
     shelves: int = 0
     has_back: bool = True
+    sprayed: bool = False
 
     def __post_init__(self):
         """Validate carcass after creation."""
@@ -246,6 +247,7 @@ class Drawer(Component):
     runner_capacity: int
     carcass: Carcass
     runner_price: float
+    sprayed: bool = False
 
     def __post_init__(self):
         """Validate drawer after creation."""
@@ -405,6 +407,7 @@ class Doors(Component):
     hinge_price: float = 0.0
     inter_door_margin: int = 1
     hinge_bore_diameter: int = 35
+    sprayed: bool = False
 
     def __post_init__(self):
         """Validate doors after creation."""

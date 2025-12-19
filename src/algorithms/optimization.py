@@ -102,6 +102,7 @@ class OptimizerConfig:
     tournament_size: int = 3
     elite_percentage: float = 0.1
     allow_rotation: bool = True  # Will be overridden based on material type
+    cutting_margin: float = 3.0  # Margin between rectangles in mm
 
 
 class SheetOptimizer(GeneticAlgorithm[PackingGene]):
@@ -142,7 +143,8 @@ class SheetOptimizer(GeneticAlgorithm[PackingGene]):
         self.packer = BinPacker(
             bin_width=config.sheet_width,
             bin_height=config.sheet_height,
-            material_type=config.material_type
+            material_type=config.material_type,
+            cutting_margin=config.cutting_margin
         )
 
         # Cache for packing results

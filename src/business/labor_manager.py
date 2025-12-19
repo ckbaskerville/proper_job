@@ -108,6 +108,7 @@ class LaborManager:
     def get_face_frame_hours(
             self,
             material: str,
+            sprayed: bool = False,
             has_moulding: bool = False
     ) -> float:
         """Get labor hours for a face frame.
@@ -119,7 +120,7 @@ class LaborManager:
         Returns:
             Labor hours required
         """
-        material_type = self.materials_manager.get_material_type(material)
+        material_type = self.materials_manager.get_material_type(material, sprayed)
         face_frame_data = self.labor_data.get('Face Frames', {}).get(
             material_type, {}
         )

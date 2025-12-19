@@ -36,7 +36,8 @@ class Settings:
     default_labor_rate: float = DEFAULT_LABOR_RATE
     default_markup: float = DEFAULT_MARKUP_PERCENTAGE
     default_material: str = 'Laminate'
-    default_thickness: float = 18.0#
+    default_thickness: float = 18.0
+    cutting_margin: float = 3.0  # Margin between rectangles in mm
 
     # Behavior
     autosave_enabled: bool = True
@@ -86,6 +87,7 @@ class Settings:
             'default_markup': self.default_markup,
             'default_material': self.default_material,
             'default_thickness': self.default_thickness,
+            'cutting_margin': self.cutting_margin,
 
             # Behavior
             'autosave_enabled': self.autosave_enabled,

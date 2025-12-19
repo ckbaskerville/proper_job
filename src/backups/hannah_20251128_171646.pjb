@@ -1,0 +1,65 @@
+{
+  "version": "2.0",
+  "name": "hannah",
+  "cabinets": [
+    {
+      "carcass": {
+        "type": "carcass",
+        "name": "double door carcass",
+        "height": 850.0,
+        "width": 1100.0,
+        "depth": 500.0,
+        "material": "Oak Veneer",
+        "material_thickness": 19.0,
+        "shelves": 1,
+        "has_back": true
+      },
+      "drawers": [],
+      "dbc_drawers": [],
+      "quantity": 4,
+      "doors": {
+        "type": "door",
+        "material": "MDF",
+        "door_type": "Shaker",
+        "material_thickness": 25.0,
+        "moulding": false,
+        "cut_handle": false,
+        "quantity": 2,
+        "position": "Overlay",
+        "margin": 4,
+        "hinge_type": "Standard 110 Inset",
+        "hinges_per_door": 2,
+        "hinge_price": 6.5,
+        "inter_door_margin": 1,
+        "hinge_bore_diameter": 35,
+        "carcass_name": "double door carcass",
+        "sprayed": true
+      },
+      "face_frame": {
+        "type": "face_frame",
+        "material": "MDF",
+        "moulding": false,
+        "sprayed": true,
+        "thickness": 25,
+        "frame_border": 36,
+        "bottom_piece_height": 100,
+        "carcass_name": "double door carcass"
+      },
+      "hardware": {},
+      "notes": ""
+    }
+  ],
+  "settings": {
+    "sheet_width": 2440,
+    "sheet_height": 1220,
+    "labor_rate": 30.0,
+    "markup_percentage": 15.0,
+    "currency_symbol": "£",
+    "company_name": "",
+    "default_material_thickness": 18.0
+  },
+  "created_date": "2025-11-28T12:02:12.269990",
+  "modified_date": "2025-11-28T12:38:31.782388",
+  "customer_info": {},
+  "notes": ""
+}
