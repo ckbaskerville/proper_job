@@ -1,5 +1,6 @@
 import PyInstaller.__main__
 import shutil
+import os
 
 PyInstaller.__main__.run([
     'src/main.py',
@@ -13,6 +14,7 @@ PyInstaller.__main__.run([
     '--collect-all=numpy'
 ])
 
-# Move resources to dist folder
-shutil.copytree('src/resources', 'dist/resources', dirs_exist_ok=True)
+if os.path.exists('dist/resources'):
+    # Move resources to dist folder
+    shutil.copytree('src/resources', 'dist/resources')
 
