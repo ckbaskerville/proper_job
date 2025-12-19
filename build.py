@@ -14,7 +14,6 @@ PyInstaller.__main__.run([
     '--collect-all=numpy'
 ])
 
-if os.path.exists('dist/resources'):
+if not os.path.exists('dist/resources'):
     # Move resources to dist folder
     shutil.copytree('src/resources', 'dist/resources')
-
