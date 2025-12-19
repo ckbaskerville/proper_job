@@ -8,7 +8,10 @@ def get_exe_directory():
     """Get the directory where the executable is located"""
     if getattr(sys, 'frozen', False):
         # Running as compiled executable
-        return os.path.dirname(sys.executable)
+        full_exe_path = os.path.dirname(sys.executable)
+        if ".app" in full_exe_path:
+            return Path(sys.executable).parents[3]
+        return full_exe_path
     else:
         # Running as script (for development)
         return os.path.dirname(os.path.abspath(__file__))

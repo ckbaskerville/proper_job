@@ -5,6 +5,8 @@ PyInstaller.__main__.run([
     'src/main.py',
     '--onefile',
     '--clean',
+    '--noconsole',
+    '--noconfirm',
     '--windowed',
     '--name=Proper Job',
     '--icon=src/resources/logo.png',
