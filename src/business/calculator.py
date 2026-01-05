@@ -454,10 +454,14 @@ class QuoteCalculator:
         labor_cost = labor_hours * self.labor_manager.hourly_rate
 
         # Calculate totals
-        subtotal = total_material_cost + labor_cost
-        markup = subtotal * (self.labor_manager.markup_percentage / 100)
-        # Total includes subtotal, markup, fitting, and extras
-        total = subtotal + markup + fitting_cost + extras_cost
+        base_cost = total_material_cost + labor_cost
+
+        markup = base_cost * (self.labor_manager.markup_percentage / 100)
+        # Subtotal includes base cost, markup, fitting, and extras
+        subtotal = base_cost + markup + fitting_cost + extras_cost
+
+        # Total includes VAT
+        total = subtotal * (1 + self.material_manager.materials_data['VAT'])
 
         return QuoteResult(
             units_count=len(self.units),

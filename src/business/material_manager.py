@@ -25,7 +25,6 @@ class MaterialManager:
 
     def _build_caches(self) -> None:
         """Build the price and grain lookup caches."""
-        vat_rate = self.materials_data.get('VAT', 0.2)
 
         for material in self.materials_data.get('Materials', []):
             material_name = material['Material']
@@ -38,9 +37,7 @@ class MaterialManager:
                 thickness = thickness_data['Thickness']
                 base_cost = thickness_data['Sheet Cost (exc. VAT)']
 
-                # Calculate price including VAT
-                price_with_vat = base_cost * (1 + vat_rate)
-                self._price_cache[(material_name, thickness)] = price_with_vat
+                self._price_cache[(material_name, thickness)] = base_cost
 
         logger.info(f"Built price cache with {len(self._price_cache)} entries")
         logger.info(f"Built grain cache with {len(self._grain_cache)} entries")
@@ -66,7 +63,7 @@ class MaterialManager:
             thickness: Material thickness in mm
 
         Returns:
-            Price per sheet including VAT
+            Price per sheet
         """
         price = self._price_cache.get((material, thickness), 0.0)
         if price == 0.0:
