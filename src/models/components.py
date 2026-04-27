@@ -142,9 +142,11 @@ class Carcass(Component):
 
         # Back panel - height should align with sheet width (grain direction)
         if self.has_back:
+            internal_width = self.width - 2 * self.material_thickness
+            internal_height = self.height - 2 * self.material_thickness
             parts.append(Rectangle(
-                width=self.width,
-                height=self.height,
+                width=internal_width,
+                height=internal_height,
                 id=f"{self.name}_back",
                 grain_direction=GrainDirection.WITH_HEIGHT,  # Height aligns with sheet width
                 component_type="carcass_back"
